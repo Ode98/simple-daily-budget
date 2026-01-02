@@ -1,20 +1,22 @@
-import React, { useState, useEffect, useCallback, memo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
 	StyleSheet,
-	Text,
 	View,
 	FlatList,
-	TouchableOpacity,
-	TouchableWithoutFeedback,
 	RefreshControl,
 	StatusBar,
 	Alert,
 	Modal,
+	Text,
 	TextInput,
+	TouchableOpacity,
+	TouchableWithoutFeedback,
 	KeyboardAvoidingView,
 	Platform,
 } from "react-native";
 import RNAndroidNotificationListener from "react-native-android-notification-listener";
+
+// Storage and budget utilities
 import {
 	getTransactions,
 	saveTransaction,
@@ -26,172 +28,24 @@ import {
 	migrateOldData,
 	TRANSACTION_TYPES,
 } from "./src/storage";
+import { calculateBudgetStatus, getDailyAllowance } from "./src/budget";
+
+// Components
 import {
-	calculateBudgetStatus,
-	getDailyAllowance,
-	formatDate,
-} from "./src/budget";
+	FormModal,
+	TransactionItem,
+	BudgetHeader,
+	ActionButtons,
+	PermissionScreen,
+	EmptyState,
+} from "./src/components";
 
-// Get transaction icon and color - defined outside for performance
-const getTransactionStyle = (type) => {
-	switch (type) {
-		case TRANSACTION_TYPES.INCOME:
-			return { icon: "💰", color: "#4CAF50", sign: "+" };
-		case TRANSACTION_TYPES.AUTO_PAYMENT:
-			return { icon: "💳", color: "#e94560", sign: "-" };
-		case TRANSACTION_TYPES.EXPENSE:
-		default:
-			return { icon: "🛒", color: "#e94560", sign: "-" };
-	}
-};
-
-// Format currency - defined outside for performance
+// Format currency helper
 const formatCurrency = (amount) => {
 	return new Intl.NumberFormat("fi-FI", {
 		style: "currency",
 		currency: "EUR",
 	}).format(Math.abs(amount));
-};
-
-// Memoized transaction item component for better FlatList performance
-const TransactionItem = memo(({ item, onPress }) => {
-	const style = getTransactionStyle(item.type);
-
-	return (
-		<TouchableOpacity
-			style={styles.transactionItem}
-			onPress={onPress}
-			activeOpacity={0.7}
-		>
-			<View style={styles.transactionLeft}>
-				<Text style={styles.transactionIcon}>{style.icon}</Text>
-				<View style={styles.transactionInfo}>
-					<Text style={styles.transactionDescription}>{item.description}</Text>
-					<Text style={styles.transactionDate}>
-						{formatDate(item.timestamp)}
-					</Text>
-				</View>
-			</View>
-			<Text style={[styles.transactionAmount, { color: style.color }]}>
-				{style.sign}
-				{formatCurrency(item.amount)}
-			</Text>
-		</TouchableOpacity>
-	);
-});
-
-// Form Modal Component - defined outside App to prevent recreation on each render
-const FormModal = ({
-	visible,
-	onClose,
-	title,
-	onSubmit,
-	submitText,
-	amountValue,
-	onAmountChange,
-	descriptionValue,
-	onDescriptionChange,
-	showDescription = true,
-	showDelete = false,
-	onDelete,
-	autoFocusAmount = true,
-}) => {
-	const inputRef = React.useRef(null);
-	const [selection, setSelection] = React.useState(undefined);
-
-	// Focus input when modal becomes visible (only if autoFocusAmount is true)
-	React.useEffect(() => {
-		if (visible && autoFocusAmount) {
-			const timer = setTimeout(() => {
-				inputRef.current?.focus();
-				// Set cursor to end of text
-				if (amountValue) {
-					setSelection({ start: amountValue.length, end: amountValue.length });
-				}
-			}, 100);
-			return () => clearTimeout(timer);
-		} else if (!visible) {
-			// Reset selection when modal closes
-			setSelection(undefined);
-		}
-	}, [visible, autoFocusAmount, amountValue]);
-
-	// Clear selection after it's been applied (so user can freely move cursor)
-	const handleSelectionChange = () => {
-		if (selection) {
-			setSelection(undefined);
-		}
-	};
-
-	return (
-		<Modal
-			visible={visible}
-			transparent
-			animationType="none"
-			onRequestClose={onClose}
-		>
-			<TouchableWithoutFeedback onPress={onClose}>
-				<View style={styles.modalOverlay}>
-					<TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-						<KeyboardAvoidingView
-							behavior={Platform.OS === "ios" ? "padding" : undefined}
-						>
-							<View style={styles.modalContent}>
-								<Text style={styles.modalTitle}>{title}</Text>
-
-								<TextInput
-									ref={inputRef}
-									style={styles.input}
-									placeholder="Amount (€)"
-									placeholderTextColor="#666"
-									keyboardType="decimal-pad"
-									value={amountValue}
-									onChangeText={onAmountChange}
-									selection={selection}
-									onSelectionChange={handleSelectionChange}
-								/>
-
-								{showDescription && (
-									<TextInput
-										style={styles.input}
-										placeholder="Description (optional)"
-										placeholderTextColor="#666"
-										value={descriptionValue}
-										onChangeText={onDescriptionChange}
-									/>
-								)}
-
-								<View style={styles.modalButtons}>
-									{showDelete && (
-										<TouchableOpacity
-											style={[styles.modalButton, styles.modalButtonDelete]}
-											onPress={onDelete}
-										>
-											<Text style={styles.modalButtonDeleteText}>Delete</Text>
-										</TouchableOpacity>
-									)}
-									<TouchableOpacity
-										style={[styles.modalButton, styles.modalButtonCancel]}
-										onPress={onClose}
-									>
-										<Text style={styles.modalButtonCancelText}>Cancel</Text>
-									</TouchableOpacity>
-									<TouchableOpacity
-										style={[styles.modalButton, styles.modalButtonSubmit]}
-										onPress={onSubmit}
-									>
-										<Text style={styles.modalButtonSubmitText}>
-											{submitText}
-										</Text>
-									</TouchableOpacity>
-								</View>
-							</View>
-						</KeyboardAvoidingView>
-					</TouchableWithoutFeedback>
-				</View>
-			</TouchableWithoutFeedback>
-		</Modal>
-	);
 };
 
 export default function App() {
@@ -206,7 +60,7 @@ export default function App() {
 	const [showIncomeModal, setShowIncomeModal] = useState(false);
 	const [showEditModal, setShowEditModal] = useState(false);
 
-	// Form states - separate state for each modal to prevent conflicts
+	// Form states
 	const [budgetInput, setBudgetInput] = useState("");
 	const [expenseAmount, setExpenseAmount] = useState("");
 	const [expenseDescription, setExpenseDescription] = useState("");
@@ -231,9 +85,7 @@ export default function App() {
 	// Load data from storage
 	const loadData = useCallback(async () => {
 		try {
-			// Migrate old data if present
 			await migrateOldData();
-
 			const [txData, settings] = await Promise.all([
 				getTransactions(),
 				getBudgetSettings(),
@@ -241,7 +93,6 @@ export default function App() {
 			setTransactions(txData);
 			setBudgetSettings(settings);
 
-			// Show budget setup if not configured
 			if (!settings) {
 				setShowBudgetModal(true);
 			}
@@ -262,13 +113,11 @@ export default function App() {
 	useEffect(() => {
 		checkPermission();
 		loadData();
-
-		// Refresh periodically
 		const interval = setInterval(loadData, 5000);
 		return () => clearInterval(interval);
 	}, [checkPermission, loadData]);
 
-	// Open Android notification settings
+	// Request permission
 	const requestPermission = () => {
 		RNAndroidNotificationListener.requestPermission();
 	};
@@ -332,7 +181,7 @@ export default function App() {
 		setIncomeDescription("");
 	};
 
-	// Open edit modal for a transaction
+	// Open edit modal
 	const handleTransactionPress = useCallback((transaction) => {
 		setEditingTransaction(transaction);
 		setEditAmount(transaction.amount.toString());
@@ -378,8 +227,6 @@ export default function App() {
 						setTransactions(updated);
 						setShowEditModal(false);
 						setEditingTransaction(null);
-						setEditAmount("");
-						setEditDescription("");
 					},
 				},
 			]
@@ -400,7 +247,7 @@ export default function App() {
 		]);
 	};
 
-	// Memoized render function for FlatList - must be before early return
+	// Memoized render function for FlatList
 	const renderItem = useCallback(
 		({ item }) => (
 			<TransactionItem
@@ -411,34 +258,13 @@ export default function App() {
 		[handleTransactionPress]
 	);
 
-	// Render permission request screen
+	// Permission screen
 	if (permissionStatus !== "authorized") {
 		return (
-			<View style={styles.container}>
-				<StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
-				<View style={styles.permissionContainer}>
-					<Text style={styles.permissionIcon}>🔔</Text>
-					<Text style={styles.permissionTitle}>
-						Notification Access Required
-					</Text>
-					<Text style={styles.permissionText}>
-						This app needs permission to read notifications from Google Pay to
-						automatically track your spending.
-					</Text>
-					<TouchableOpacity
-						style={styles.permissionButton}
-						onPress={requestPermission}
-					>
-						<Text style={styles.permissionButtonText}>Open Settings</Text>
-					</TouchableOpacity>
-					<TouchableOpacity
-						style={styles.refreshButton}
-						onPress={checkPermission}
-					>
-						<Text style={styles.refreshButtonText}>I've enabled it</Text>
-					</TouchableOpacity>
-				</View>
-			</View>
+			<PermissionScreen
+				onRequestPermission={requestPermission}
+				onCheckPermission={checkPermission}
+			/>
 		);
 	}
 
@@ -447,84 +273,22 @@ export default function App() {
 		? calculateBudgetStatus(transactions, budgetSettings.monthlyBudget)
 		: null;
 
-	const isPositive = budgetStatus?.availableBudget >= 0;
-
 	return (
 		<View style={styles.container}>
 			<StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
 
-			{/* Header with daily budget */}
-			<View style={styles.header}>
-				<View style={styles.headerTop}>
-					<Text style={styles.headerLabel}>Today's Budget</Text>
-					<TouchableOpacity onPress={handleResetBudget}>
-						<Text style={styles.settingsIcon}>⚙️</Text>
-					</TouchableOpacity>
-				</View>
+			<BudgetHeader
+				budgetStatus={budgetStatus}
+				onSettingsPress={handleResetBudget}
+			/>
 
-				{budgetStatus ? (
-					<>
-						<Text
-							style={[
-								styles.budgetAmount,
-								{ color: isPositive ? "#4CAF50" : "#e94560" },
-							]}
-						>
-							{formatCurrency(budgetStatus.availableBudget)}
-						</Text>
-						<Text style={styles.dailyAllowance}>
-							+{formatCurrency(budgetStatus.dailyAllowance)}/day
-						</Text>
-						<View style={styles.statsRow}>
-							<Text style={styles.statText}>
-								Day {budgetStatus.daysElapsed}/{budgetStatus.daysInMonth}
-							</Text>
-							<Text style={styles.statDivider}>•</Text>
-							<Text style={styles.statText}>
-								Spent: {formatCurrency(budgetStatus.totalSpent)}
-							</Text>
-							{budgetStatus.totalIncome > 0 && (
-								<>
-									<Text style={styles.statDivider}>•</Text>
-									<Text style={[styles.statText, { color: "#4CAF50" }]}>
-										+{formatCurrency(budgetStatus.totalIncome)}
-									</Text>
-								</>
-							)}
-						</View>
-					</>
-				) : (
-					<Text style={styles.budgetAmount}>Set Budget</Text>
-				)}
-			</View>
+			<ActionButtons
+				onExpensePress={() => setShowExpenseModal(true)}
+				onIncomePress={() => setShowIncomeModal(true)}
+			/>
 
-			{/* Action buttons */}
-			<View style={styles.actionButtons}>
-				<TouchableOpacity
-					style={[styles.actionButton, styles.expenseButton]}
-					onPress={() => setShowExpenseModal(true)}
-				>
-					<Text style={styles.actionButtonIcon}>−</Text>
-					<Text style={styles.actionButtonText}>Expense</Text>
-				</TouchableOpacity>
-				<TouchableOpacity
-					style={[styles.actionButton, styles.incomeButton]}
-					onPress={() => setShowIncomeModal(true)}
-				>
-					<Text style={styles.actionButtonIcon}>+</Text>
-					<Text style={styles.actionButtonText}>Income</Text>
-				</TouchableOpacity>
-			</View>
-
-			{/* Transactions list */}
 			{transactions.length === 0 ? (
-				<View style={styles.emptyContainer}>
-					<Text style={styles.emptyIcon}>📊</Text>
-					<Text style={styles.emptyText}>No transactions yet</Text>
-					<Text style={styles.emptySubtext}>
-						Add expenses manually or make a Google Pay payment
-					</Text>
-				</View>
+				<EmptyState />
 			) : (
 				<FlatList
 					data={transactions}
@@ -675,208 +439,11 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: "#1a1a2e",
 	},
-
-	// Permission screen
-	permissionContainer: {
-		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-		padding: 32,
-	},
-	permissionIcon: {
-		fontSize: 64,
-		marginBottom: 24,
-	},
-	permissionTitle: {
-		fontSize: 24,
-		fontWeight: "bold",
-		color: "#ffffff",
-		textAlign: "center",
-		marginBottom: 16,
-	},
-	permissionText: {
-		fontSize: 16,
-		color: "#a0a0a0",
-		textAlign: "center",
-		marginBottom: 32,
-		lineHeight: 24,
-	},
-	permissionButton: {
-		backgroundColor: "#e94560",
-		paddingHorizontal: 32,
-		paddingVertical: 16,
-		borderRadius: 12,
-		marginBottom: 16,
-	},
-	permissionButtonText: {
-		color: "#ffffff",
-		fontSize: 18,
-		fontWeight: "600",
-	},
-	refreshButton: {
-		paddingHorizontal: 32,
-		paddingVertical: 12,
-	},
-	refreshButtonText: {
-		color: "#e94560",
-		fontSize: 16,
-	},
-
-	// Header
-	header: {
-		backgroundColor: "#16213e",
-		padding: 24,
-		paddingTop: 60,
-		alignItems: "center",
-		borderBottomLeftRadius: 32,
-		borderBottomRightRadius: 32,
-	},
-	headerTop: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		width: "100%",
-		marginBottom: 8,
-	},
-	headerLabel: {
-		fontSize: 14,
-		color: "#a0a0a0",
-		textTransform: "uppercase",
-		letterSpacing: 2,
-	},
-	settingsIcon: {
-		fontSize: 24,
-	},
-	budgetAmount: {
-		fontSize: 56,
-		fontWeight: "bold",
-		color: "#4CAF50",
-		marginBottom: 4,
-	},
-	dailyAllowance: {
-		fontSize: 16,
-		color: "#4CAF50",
-		marginBottom: 12,
-	},
-	statsRow: {
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	statText: {
-		fontSize: 13,
-		color: "#a0a0a0",
-	},
-	statDivider: {
-		fontSize: 13,
-		color: "#a0a0a0",
-		marginHorizontal: 8,
-	},
-
-	// Action buttons
-	actionButtons: {
-		flexDirection: "row",
-		padding: 16,
-		gap: 12,
-	},
-	actionButton: {
-		flex: 1,
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		paddingVertical: 14,
-		borderRadius: 12,
-		gap: 8,
-	},
-	expenseButton: {
-		backgroundColor: "rgba(233, 69, 96, 0.2)",
-		borderWidth: 1,
-		borderColor: "#e94560",
-	},
-	incomeButton: {
-		backgroundColor: "rgba(76, 175, 80, 0.2)",
-		borderWidth: 1,
-		borderColor: "#4CAF50",
-	},
-	actionButtonIcon: {
-		fontSize: 24,
-		fontWeight: "bold",
-		color: "#ffffff",
-	},
-	actionButtonText: {
-		fontSize: 16,
-		fontWeight: "600",
-		color: "#ffffff",
-	},
-
-	// List
 	listContent: {
 		padding: 16,
 		paddingBottom: 32,
 	},
-	transactionItem: {
-		backgroundColor: "#16213e",
-		borderRadius: 16,
-		padding: 16,
-		marginBottom: 10,
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-	},
-	transactionItemPressed: {
-		backgroundColor: "#1e2a4a",
-	},
-	transactionLeft: {
-		flexDirection: "row",
-		alignItems: "center",
-		flex: 1,
-	},
-	transactionIcon: {
-		fontSize: 24,
-		marginRight: 12,
-	},
-	transactionInfo: {
-		flex: 1,
-	},
-	transactionDescription: {
-		fontSize: 16,
-		fontWeight: "600",
-		color: "#ffffff",
-		marginBottom: 2,
-	},
-	transactionDate: {
-		fontSize: 13,
-		color: "#a0a0a0",
-	},
-	transactionAmount: {
-		fontSize: 18,
-		fontWeight: "bold",
-	},
-
-	// Empty state
-	emptyContainer: {
-		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-		padding: 32,
-	},
-	emptyIcon: {
-		fontSize: 64,
-		marginBottom: 24,
-	},
-	emptyText: {
-		fontSize: 20,
-		fontWeight: "600",
-		color: "#ffffff",
-		marginBottom: 8,
-	},
-	emptySubtext: {
-		fontSize: 16,
-		color: "#a0a0a0",
-		textAlign: "center",
-		lineHeight: 24,
-	},
-
-	// Modals
+	// Budget Modal styles
 	modalOverlay: {
 		flex: 1,
 		backgroundColor: "rgba(0, 0, 0, 0.7)",
@@ -942,16 +509,6 @@ const styles = StyleSheet.create({
 	},
 	modalButtonSubmitText: {
 		color: "#ffffff",
-		fontSize: 16,
-		fontWeight: "600",
-	},
-	modalButtonDelete: {
-		backgroundColor: "rgba(233, 69, 96, 0.2)",
-		borderWidth: 1,
-		borderColor: "#e94560",
-	},
-	modalButtonDeleteText: {
-		color: "#e94560",
 		fontSize: 16,
 		fontWeight: "600",
 	},
