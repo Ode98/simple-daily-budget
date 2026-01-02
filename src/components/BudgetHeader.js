@@ -29,6 +29,7 @@ const BudgetHeader = ({ budgetStatus, onSettingsPress }) => {
 							{ color: isPositive ? "#4CAF50" : "#e94560" },
 						]}
 					>
+						<Text style={{ fontSize: 50 }}>{isPositive ? "+" : "-"}</Text>
 						{formatCurrency(budgetStatus.availableBudget)}
 					</Text>
 					<Text style={styles.dailyAllowance}>
