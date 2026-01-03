@@ -1,15 +1,26 @@
 import React from "react";
 import type { WidgetTaskHandlerProps } from "react-native-android-widget";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BudgetWidget } from "./BudgetWidget";
+import { BudgetSettings, Transaction } from "../types";
+import { calculateBudgetStatus } from "../budget";
 
-const DEFAULT_BUDGET = "Open app";
+const STORAGE_KEY = "@budget_transactions";
+const BUDGET_SETTINGS_KEY = "@budget_settings";
+
+const formatCurrency = (amount: number): string => {
+	return new Intl.NumberFormat("fi-FI", {
+		style: "currency",
+		currency: "EUR",
+	}).format(Math.abs(amount));
+};
 
 /**
  * Widget task handler that renders the BudgetWidget.
  * This is called by Android when the widget needs to be rendered.
  *
- * Note: Without SharedPreferences, the widget shows a default message
- * until the app runs and triggers an update via requestWidgetUpdate().
+ * It fetches the latest data from AsyncStorage to ensure the widget
+ * stays up to date with background updates.
  */
 export async function widgetTaskHandler(
 	props: WidgetTaskHandlerProps
@@ -18,10 +29,42 @@ export async function widgetTaskHandler(
 		case "WIDGET_ADDED":
 		case "WIDGET_UPDATE":
 		case "WIDGET_RESIZED":
-			// Render widget with default/placeholder text
-			// The actual budget will be provided when the app triggers
-			// requestWidgetUpdate() with the real data
-			props.renderWidget(<BudgetWidget budget={DEFAULT_BUDGET} />);
+			try {
+				// Fetch settings and transactions
+				const [settingsData, transactionsData] = await Promise.all([
+					AsyncStorage.getItem(BUDGET_SETTINGS_KEY),
+					AsyncStorage.getItem(STORAGE_KEY),
+				]);
+
+				if (!settingsData) {
+					// No budget set yet
+					props.renderWidget(
+						<BudgetWidget budget="Setup app" isNegative={false} />
+					);
+					break;
+				}
+
+				const settings: BudgetSettings = JSON.parse(settingsData);
+				const transactions: Transaction[] = transactionsData
+					? JSON.parse(transactionsData)
+					: [];
+
+				// Calculate budget status
+				const budgetStatus = calculateBudgetStatus(
+					transactions,
+					settings.monthlyBudget
+				);
+				const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+				const isNegative = budgetStatus.availableBudget < 0;
+
+				props.renderWidget(
+					<BudgetWidget budget={formattedBudget} isNegative={isNegative} />
+				);
+			} catch (error) {
+				console.error("Error updating widget:", error);
+				// Fallback in case of error
+				props.renderWidget(<BudgetWidget budget="Error" />);
+			}
 			break;
 
 		case "WIDGET_DELETED":
