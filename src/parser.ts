@@ -112,6 +112,7 @@ export function parsePaymentNotification(
 			type: TRANSACTION_TYPES.AUTO_PAYMENT,
 			description: parseMerchant(text, title),
 			source: "auto",
+			rawNotification: data,
 		};
 	} catch (error) {
 		console.error("Error parsing notification:", error);

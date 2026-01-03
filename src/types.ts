@@ -24,6 +24,8 @@ export interface Transaction {
 	type: TransactionType;
 	description: string;
 	source: "manual" | "auto";
+	/** Raw notification data for auto transactions (for debugging) */
+	rawNotification?: RawNotification;
 }
 
 /**

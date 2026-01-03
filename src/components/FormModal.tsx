@@ -6,10 +6,12 @@ import {
 	Modal,
 	TextInput,
 	TouchableOpacity,
-	TouchableWithoutFeedback,
+	Pressable,
 	KeyboardAvoidingView,
 	Platform,
+	ScrollView,
 } from "react-native";
+import type { RawNotification } from "../types";
 
 interface FormModalProps {
 	visible: boolean;
@@ -25,6 +27,8 @@ interface FormModalProps {
 	showDelete?: boolean;
 	onDelete?: () => void;
 	autoFocusAmount?: boolean;
+	/** Raw notification data for auto transactions (debugging) */
+	rawNotification?: RawNotification;
 }
 
 const FormModal: React.FC<FormModalProps> = ({
@@ -41,11 +45,13 @@ const FormModal: React.FC<FormModalProps> = ({
 	showDelete = false,
 	onDelete,
 	autoFocusAmount = true,
+	rawNotification,
 }) => {
 	const inputRef = React.useRef<TextInput>(null);
 	const [selection, setSelection] = React.useState<
 		{ start: number; end: number } | undefined
 	>(undefined);
+	const [showRawData, setShowRawData] = React.useState(false);
 
 	// Focus input when modal becomes visible (only if autoFocusAmount is true)
 	React.useEffect(() => {
@@ -59,8 +65,9 @@ const FormModal: React.FC<FormModalProps> = ({
 			}, 100);
 			return () => clearTimeout(timer);
 		} else if (!visible) {
-			// Reset selection when modal closes
+			// Reset selection and raw data view when modal closes
 			setSelection(undefined);
+			setShowRawData(false);
 		}
 	}, [visible, autoFocusAmount, amountValue]);
 
@@ -78,66 +85,88 @@ const FormModal: React.FC<FormModalProps> = ({
 			animationType="none"
 			onRequestClose={onClose}
 		>
-			<TouchableWithoutFeedback onPress={onClose}>
-				<View style={styles.modalOverlay}>
-					<TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-						<KeyboardAvoidingView
-							behavior={Platform.OS === "ios" ? "padding" : undefined}
-						>
-							<View style={styles.modalContent}>
-								<Text style={styles.modalTitle}>{title}</Text>
+			<Pressable style={styles.modalOverlay} onPress={onClose}>
+				<KeyboardAvoidingView
+					behavior={Platform.OS === "ios" ? "padding" : undefined}
+				>
+					<Pressable style={styles.modalContent} onPress={() => {}}>
+						<Text style={styles.modalTitle}>{title}</Text>
 
-								<TextInput
-									ref={inputRef}
-									style={styles.input}
-									placeholder="Amount (€)"
-									placeholderTextColor="#666"
-									keyboardType="decimal-pad"
-									value={amountValue}
-									onChangeText={onAmountChange}
-									selection={selection}
-									onSelectionChange={handleSelectionChange}
-								/>
+						<TextInput
+							ref={inputRef}
+							style={styles.input}
+							placeholder="Amount (€)"
+							placeholderTextColor="#666"
+							keyboardType="decimal-pad"
+							value={amountValue}
+							onChangeText={onAmountChange}
+							selection={selection}
+							onSelectionChange={handleSelectionChange}
+						/>
 
-								{showDescription && (
-									<TextInput
-										style={styles.input}
-										placeholder="Description (optional)"
-										placeholderTextColor="#666"
-										value={descriptionValue}
-										onChangeText={onDescriptionChange}
-									/>
-								)}
+						{showDescription && (
+							<TextInput
+								style={styles.input}
+								placeholder="Description (optional)"
+								placeholderTextColor="#666"
+								value={descriptionValue}
+								onChangeText={onDescriptionChange}
+							/>
+						)}
 
-								<View style={styles.modalButtons}>
-									{showDelete && (
-										<TouchableOpacity
-											style={[styles.modalButton, styles.modalButtonDelete]}
-											onPress={onDelete}
-										>
-											<Text style={styles.modalButtonDeleteText}>Delete</Text>
-										</TouchableOpacity>
-									)}
-									<TouchableOpacity
-										style={[styles.modalButton, styles.modalButtonCancel]}
-										onPress={onClose}
-									>
-										<Text style={styles.modalButtonCancelText}>Cancel</Text>
-									</TouchableOpacity>
-									<TouchableOpacity
-										style={[styles.modalButton, styles.modalButtonSubmit]}
-										onPress={onSubmit}
-									>
-										<Text style={styles.modalButtonSubmitText}>
-											{submitText}
-										</Text>
-									</TouchableOpacity>
-								</View>
-							</View>
-						</KeyboardAvoidingView>
-					</TouchableWithoutFeedback>
-				</View>
-			</TouchableWithoutFeedback>
+						{/* Advanced Info Button - only show for auto transactions with raw data */}
+						{rawNotification && (
+							<TouchableOpacity
+								style={styles.advancedButton}
+								onPress={() => setShowRawData(!showRawData)}
+							>
+								<Text style={styles.advancedButtonText}>
+									{showRawData ? "▼ Hide Raw Data" : "▶ Show Raw Data"}
+								</Text>
+							</TouchableOpacity>
+						)}
+
+						{/* Raw notification data display */}
+						{showRawData && rawNotification && (
+							<ScrollView
+								style={styles.rawDataContainer}
+								nestedScrollEnabled={true}
+								scrollEnabled={true}
+								showsVerticalScrollIndicator={true}
+								onStartShouldSetResponder={() => true}
+								onMoveShouldSetResponder={() => true}
+							>
+								<Text style={styles.rawDataText} selectable>
+									{JSON.stringify(rawNotification, null, 2)}
+								</Text>
+							</ScrollView>
+						)}
+
+						<View style={styles.modalButtons}>
+							{showDelete && (
+								<TouchableOpacity
+									style={[styles.modalButton, styles.modalButtonDelete]}
+									onPress={onDelete}
+								>
+									<Text style={styles.modalButtonDeleteText}>Delete</Text>
+								</TouchableOpacity>
+							)}
+							<TouchableOpacity
+								style={[styles.modalButton, styles.modalButtonCancel]}
+								onPress={onClose}
+							>
+								<Text style={styles.modalButtonCancelText}>Cancel</Text>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.modalButton, styles.modalButtonSubmit]}
+								onPress={onSubmit}
+							>
+								<Text style={styles.modalButtonSubmitText}>{submitText}</Text>
+							</TouchableOpacity>
+						</View>
+					</Pressable>
+				</KeyboardAvoidingView>
+			</Pressable>
 		</Modal>
 	);
 };
@@ -171,6 +200,26 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 		borderWidth: 1,
 		borderColor: "#2a2a4e",
+	},
+	advancedButton: {
+		paddingVertical: 8,
+		marginBottom: 8,
+	},
+	advancedButtonText: {
+		color: "#666",
+		fontSize: 12,
+	},
+	rawDataContainer: {
+		backgroundColor: "#1a1a2e",
+		borderRadius: 8,
+		padding: 12,
+		marginBottom: 12,
+		maxHeight: 150,
+	},
+	rawDataText: {
+		color: "#888",
+		fontSize: 11,
+		fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
 	},
 	modalButtons: {
 		flexDirection: "row",

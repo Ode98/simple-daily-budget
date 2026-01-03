@@ -459,6 +459,7 @@ export default function App(): React.JSX.Element {
 				onDescriptionChange={setEditDescription}
 				showDelete={true}
 				onDelete={handleDeleteTransaction}
+				rawNotification={editingTransaction?.rawNotification}
 			/>
 		</View>
 	);

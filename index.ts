@@ -2,17 +2,68 @@ import { registerRootComponent } from "expo";
 import { AppRegistry } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RNAndroidNotificationListenerHeadlessJsName } from "react-native-android-notification-listener";
-import { registerWidgetTaskHandler } from "react-native-android-widget";
+import {
+	registerWidgetTaskHandler,
+	requestWidgetUpdate,
+} from "react-native-android-widget";
 import { parsePaymentNotification, GOOGLE_WALLET_PACKAGE } from "./src/parser";
-import { RawNotification, Transaction } from "./src/types";
+import { RawNotification, Transaction, BudgetSettings } from "./src/types";
+import { calculateBudgetStatus } from "./src/budget";
 import { widgetTaskHandler } from "./src/widgets/widget-task-handler";
 
 import App from "./App";
 
 const STORAGE_KEY = "@budget_transactions";
+const BUDGET_SETTINGS_KEY = "@budget_settings";
+
+// Format currency helper (same as in App.tsx)
+const formatCurrency = (amount: number): string => {
+	return new Intl.NumberFormat("fi-FI", {
+		style: "currency",
+		currency: "EUR",
+	}).format(Math.abs(amount));
+};
 
 interface HeadlessTaskData {
 	notification: string | RawNotification | null;
+}
+
+/**
+ * Update the widget with the current budget
+ */
+async function updateWidget(transactions: Transaction[]): Promise<void> {
+	try {
+		// Get budget settings
+		const settingsData = await AsyncStorage.getItem(BUDGET_SETTINGS_KEY);
+		if (!settingsData) {
+			console.log("No budget settings found, skipping widget update");
+			return;
+		}
+
+		const settings: BudgetSettings = JSON.parse(settingsData);
+		const budgetStatus = calculateBudgetStatus(
+			transactions,
+			settings.monthlyBudget
+		);
+		const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+
+		// Update the widget (using require to avoid JSX in .ts file)
+		requestWidgetUpdate({
+			widgetName: "BudgetWidget",
+			renderWidget: () => {
+				const React = require("react");
+				const { BudgetWidget } = require("./src/widgets/BudgetWidget");
+				return React.createElement(BudgetWidget, { budget: formattedBudget });
+			},
+			widgetNotFound: () => {
+				// Widget not added to home screen yet
+			},
+		});
+
+		console.log("Widget updated with budget:", formattedBudget);
+	} catch (error) {
+		console.error("Error updating widget:", error);
+	}
 }
 
 /**
@@ -50,6 +101,9 @@ const headlessNotificationListener = async ({
 			const updated = [transaction, ...existing];
 			await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 			console.log("Transaction saved:", transaction);
+
+			// Update the widget with new budget
+			await updateWidget(updated);
 		}
 	} catch (error) {
 		console.error("Error in headless notification listener:", error);
