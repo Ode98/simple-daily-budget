@@ -211,7 +211,17 @@ export function groupTransactionsByDay(
 	const groups: Record<string, Transaction[]> = {};
 
 	for (const tx of transactions) {
-		const date = new Date(tx.timestamp);
+		const date = parseTimestamp(tx.timestamp);
+
+		if (!date) {
+			// Handle invalid dates by grouping them under a fallback key or ignoring
+			// For now, let's group them under a fallback key
+			const fallbackKey = "1970-01-01"; // Or catch-all
+			if (!groups[fallbackKey]) groups[fallbackKey] = [];
+			groups[fallbackKey].push(tx);
+			continue;
+		}
+
 		const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
 			2,
 			"0"
