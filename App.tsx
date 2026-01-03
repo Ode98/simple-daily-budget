@@ -13,8 +13,17 @@ import {
 	TouchableWithoutFeedback,
 	KeyboardAvoidingView,
 	Platform,
+	ListRenderItem,
 } from "react-native";
 import RNAndroidNotificationListener from "react-native-android-notification-listener";
+
+// Types
+import {
+	Transaction,
+	BudgetSettings,
+	BudgetStatus,
+	TRANSACTION_TYPES,
+} from "./src/types";
 
 // Storage and budget utilities
 import {
@@ -26,7 +35,6 @@ import {
 	getBudgetSettings,
 	saveBudgetSettings,
 	migrateOldData,
-	TRANSACTION_TYPES,
 } from "./src/storage";
 import { calculateBudgetStatus, getDailyAllowance } from "./src/budget";
 
@@ -41,36 +49,39 @@ import {
 } from "./src/components";
 
 // Format currency helper
-const formatCurrency = (amount) => {
+const formatCurrency = (amount: number): string => {
 	return new Intl.NumberFormat("fi-FI", {
 		style: "currency",
 		currency: "EUR",
 	}).format(Math.abs(amount));
 };
 
-export default function App() {
-	const [permissionStatus, setPermissionStatus] = useState("unknown");
-	const [transactions, setTransactions] = useState([]);
-	const [budgetSettings, setBudgetSettings] = useState(null);
-	const [refreshing, setRefreshing] = useState(false);
+export default function App(): React.JSX.Element {
+	const [permissionStatus, setPermissionStatus] = useState<string>("unknown");
+	const [transactions, setTransactions] = useState<Transaction[]>([]);
+	const [budgetSettings, setBudgetSettings] = useState<BudgetSettings | null>(
+		null
+	);
+	const [refreshing, setRefreshing] = useState<boolean>(false);
 
 	// Modal states
-	const [showBudgetModal, setShowBudgetModal] = useState(false);
-	const [showExpenseModal, setShowExpenseModal] = useState(false);
-	const [showIncomeModal, setShowIncomeModal] = useState(false);
-	const [showEditModal, setShowEditModal] = useState(false);
+	const [showBudgetModal, setShowBudgetModal] = useState<boolean>(false);
+	const [showExpenseModal, setShowExpenseModal] = useState<boolean>(false);
+	const [showIncomeModal, setShowIncomeModal] = useState<boolean>(false);
+	const [showEditModal, setShowEditModal] = useState<boolean>(false);
 
 	// Form states
-	const [budgetInput, setBudgetInput] = useState("");
-	const [expenseAmount, setExpenseAmount] = useState("");
-	const [expenseDescription, setExpenseDescription] = useState("");
-	const [incomeAmount, setIncomeAmount] = useState("");
-	const [incomeDescription, setIncomeDescription] = useState("");
+	const [budgetInput, setBudgetInput] = useState<string>("");
+	const [expenseAmount, setExpenseAmount] = useState<string>("");
+	const [expenseDescription, setExpenseDescription] = useState<string>("");
+	const [incomeAmount, setIncomeAmount] = useState<string>("");
+	const [incomeDescription, setIncomeDescription] = useState<string>("");
 
 	// Edit state
-	const [editingTransaction, setEditingTransaction] = useState(null);
-	const [editAmount, setEditAmount] = useState("");
-	const [editDescription, setEditDescription] = useState("");
+	const [editingTransaction, setEditingTransaction] =
+		useState<Transaction | null>(null);
+	const [editAmount, setEditAmount] = useState<string>("");
+	const [editDescription, setEditDescription] = useState<string>("");
 
 	// Check permission status
 	const checkPermission = useCallback(async () => {
@@ -118,19 +129,19 @@ export default function App() {
 	}, [checkPermission, loadData]);
 
 	// Request permission
-	const requestPermission = () => {
+	const requestPermission = (): void => {
 		RNAndroidNotificationListener.requestPermission();
 	};
 
 	// Save budget settings
-	const handleSaveBudget = async () => {
+	const handleSaveBudget = async (): Promise<void> => {
 		const amount = parseFloat(budgetInput.replace(",", "."));
 		if (isNaN(amount) || amount <= 0) {
 			Alert.alert("Invalid Amount", "Please enter a valid budget amount");
 			return;
 		}
 
-		const settings = {
+		const settings: BudgetSettings = {
 			monthlyBudget: amount,
 			startDate: new Date().toISOString(),
 		};
@@ -142,7 +153,7 @@ export default function App() {
 	};
 
 	// Add expense
-	const handleAddExpense = async () => {
+	const handleAddExpense = async (): Promise<void> => {
 		const amount = parseFloat(expenseAmount.replace(",", "."));
 		if (isNaN(amount) || amount <= 0) {
 			Alert.alert("Invalid Amount", "Please enter a valid amount");
@@ -162,7 +173,7 @@ export default function App() {
 	};
 
 	// Add income
-	const handleAddIncome = async () => {
+	const handleAddIncome = async (): Promise<void> => {
 		const amount = parseFloat(incomeAmount.replace(",", "."));
 		if (isNaN(amount) || amount <= 0) {
 			Alert.alert("Invalid Amount", "Please enter a valid amount");
@@ -182,7 +193,7 @@ export default function App() {
 	};
 
 	// Open edit modal
-	const handleTransactionPress = useCallback((transaction) => {
+	const handleTransactionPress = useCallback((transaction: Transaction) => {
 		setEditingTransaction(transaction);
 		setEditAmount(transaction.amount.toString());
 		setEditDescription(transaction.description);
@@ -190,7 +201,7 @@ export default function App() {
 	}, []);
 
 	// Save edited transaction
-	const handleSaveEdit = async () => {
+	const handleSaveEdit = async (): Promise<void> => {
 		if (!editingTransaction) return;
 
 		const amount = parseFloat(editAmount.replace(",", "."));
@@ -211,7 +222,7 @@ export default function App() {
 	};
 
 	// Delete transaction
-	const handleDeleteTransaction = async () => {
+	const handleDeleteTransaction = async (): Promise<void> => {
 		if (!editingTransaction) return;
 
 		Alert.alert(
@@ -234,7 +245,7 @@ export default function App() {
 	};
 
 	// Reset budget
-	const handleResetBudget = () => {
+	const handleResetBudget = (): void => {
 		Alert.alert("Reset Budget", "Do you want to change your monthly budget?", [
 			{ text: "Cancel", style: "cancel" },
 			{
@@ -248,7 +259,7 @@ export default function App() {
 	};
 
 	// Memoized render function for FlatList
-	const renderItem = useCallback(
+	const renderItem: ListRenderItem<Transaction> = useCallback(
 		({ item }) => (
 			<TransactionItem
 				item={item}
@@ -269,7 +280,7 @@ export default function App() {
 	}
 
 	// Calculate budget status
-	const budgetStatus = budgetSettings
+	const budgetStatus: BudgetStatus | null = budgetSettings
 		? calculateBudgetStatus(transactions, budgetSettings.monthlyBudget)
 		: null;
 

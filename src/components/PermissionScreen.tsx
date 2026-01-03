@@ -7,7 +7,15 @@ import {
 	StatusBar,
 } from "react-native";
 
-const PermissionScreen = ({ onRequestPermission, onCheckPermission }) => {
+interface PermissionScreenProps {
+	onRequestPermission: () => void;
+	onCheckPermission: () => void;
+}
+
+const PermissionScreen: React.FC<PermissionScreenProps> = ({
+	onRequestPermission,
+	onCheckPermission,
+}) => {
 	return (
 		<View style={styles.container}>
 			<StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />

@@ -1,24 +1,24 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+	Transaction,
+	TransactionUpdates,
+	BudgetSettings,
+	TRANSACTION_TYPES,
+	TransactionType,
+} from "./types";
+
+// Re-export for convenience
+export { TRANSACTION_TYPES } from "./types";
 
 const STORAGE_KEYS = {
 	TRANSACTIONS: "@budget_transactions",
 	BUDGET_SETTINGS: "@budget_settings",
-};
-
-/**
- * Transaction types
- */
-export const TRANSACTION_TYPES = {
-	EXPENSE: "expense",
-	INCOME: "income",
-	AUTO_PAYMENT: "auto_payment",
-};
+} as const;
 
 /**
  * Get budget settings
- * @returns {Promise<Object|null>} Budget settings or null if not set
  */
-export async function getBudgetSettings() {
+export async function getBudgetSettings(): Promise<BudgetSettings | null> {
 	try {
 		const data = await AsyncStorage.getItem(STORAGE_KEYS.BUDGET_SETTINGS);
 		return data ? JSON.parse(data) : null;
@@ -30,9 +30,10 @@ export async function getBudgetSettings() {
 
 /**
  * Save budget settings
- * @param {Object} settings - Budget settings { monthlyBudget: number, startDate: ISO string }
  */
-export async function saveBudgetSettings(settings) {
+export async function saveBudgetSettings(
+	settings: BudgetSettings
+): Promise<boolean> {
 	try {
 		await AsyncStorage.setItem(
 			STORAGE_KEYS.BUDGET_SETTINGS,
@@ -47,10 +48,10 @@ export async function saveBudgetSettings(settings) {
 
 /**
  * Save a new transaction
- * @param {Object} transaction - Transaction object
- * @returns {Promise<Array>} Updated transactions array
  */
-export async function saveTransaction(transaction) {
+export async function saveTransaction(
+	transaction: Transaction
+): Promise<Transaction[]> {
 	try {
 		const existing = await getTransactions();
 		const updated = [transaction, ...existing];
@@ -67,9 +68,8 @@ export async function saveTransaction(transaction) {
 
 /**
  * Get all stored transactions
- * @returns {Promise<Array>} Array of transactions
  */
-export async function getTransactions() {
+export async function getTransactions(): Promise<Transaction[]> {
 	try {
 		const data = await AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
 		return data ? JSON.parse(data) : [];
@@ -82,7 +82,7 @@ export async function getTransactions() {
 /**
  * Clear all stored transactions
  */
-export async function clearTransactions() {
+export async function clearTransactions(): Promise<void> {
 	try {
 		await AsyncStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
 	} catch (error) {
@@ -92,10 +92,8 @@ export async function clearTransactions() {
 
 /**
  * Delete a transaction by ID
- * @param {string} id - Transaction ID to delete
- * @returns {Promise<Array>} Updated transactions array
  */
-export async function deleteTransaction(id) {
+export async function deleteTransaction(id: string): Promise<Transaction[]> {
 	try {
 		const existing = await getTransactions();
 		const updated = existing.filter((t) => t.id !== id);
@@ -112,11 +110,11 @@ export async function deleteTransaction(id) {
 
 /**
  * Update a transaction by ID
- * @param {string} id - Transaction ID to update
- * @param {Object} updates - Fields to update { amount, description }
- * @returns {Promise<Array>} Updated transactions array
  */
-export async function updateTransaction(id, updates) {
+export async function updateTransaction(
+	id: string,
+	updates: TransactionUpdates
+): Promise<Transaction[]> {
 	try {
 		const existing = await getTransactions();
 		const updated = existing.map((t) => {
@@ -146,12 +144,12 @@ export async function updateTransaction(id, updates) {
 
 /**
  * Create a manual transaction
- * @param {number} amount - Transaction amount (positive)
- * @param {string} type - Transaction type (expense, income)
- * @param {string} description - Transaction description
- * @returns {Object} Transaction object
  */
-export function createTransaction(amount, type, description) {
+export function createTransaction(
+	amount: number,
+	type: TransactionType,
+	description?: string
+): Transaction {
 	return {
 		id: `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 		timestamp: new Date().toISOString(),
@@ -163,19 +161,28 @@ export function createTransaction(amount, type, description) {
 	};
 }
 
-// Legacy support - migrate old notifications to new format
-export async function migrateOldData() {
+/**
+ * Legacy support - migrate old notifications to new format
+ */
+export async function migrateOldData(): Promise<void> {
 	try {
 		const oldData = await AsyncStorage.getItem("@payment_notifications");
 		if (oldData) {
-			const oldNotifications = JSON.parse(oldData);
-			const migratedTransactions = oldNotifications.map((n) => ({
+			interface OldNotification {
+				id: string;
+				timestamp: string;
+				amount: number;
+				merchant?: string;
+			}
+
+			const oldNotifications: OldNotification[] = JSON.parse(oldData);
+			const migratedTransactions: Transaction[] = oldNotifications.map((n) => ({
 				id: n.id,
 				timestamp: n.timestamp,
 				amount: n.amount,
 				type: TRANSACTION_TYPES.AUTO_PAYMENT,
 				description: n.merchant || "Unknown",
-				source: "auto",
+				source: "auto" as const,
 			}));
 
 			// Merge with existing transactions (avoid duplicates)
@@ -187,7 +194,8 @@ export async function migrateOldData() {
 
 			if (newTransactions.length > 0) {
 				const merged = [...existing, ...newTransactions].sort(
-					(a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+					(a, b) =>
+						new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
 				);
 				await AsyncStorage.setItem(
 					STORAGE_KEYS.TRANSACTIONS,

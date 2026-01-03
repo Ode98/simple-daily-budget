@@ -1,7 +1,15 @@
 import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 
-const ActionButtons = ({ onExpensePress, onIncomePress }) => {
+interface ActionButtonsProps {
+	onExpensePress: () => void;
+	onIncomePress: () => void;
+}
+
+const ActionButtons: React.FC<ActionButtonsProps> = ({
+	onExpensePress,
+	onIncomePress,
+}) => {
 	return (
 		<View style={styles.container}>
 			<TouchableOpacity

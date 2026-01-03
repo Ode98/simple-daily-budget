@@ -1,16 +1,27 @@
 import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { BudgetStatus } from "../types";
 
 // Format currency
-const formatCurrency = (amount) => {
+const formatCurrency = (amount: number): string => {
 	return new Intl.NumberFormat("fi-FI", {
 		style: "currency",
 		currency: "EUR",
 	}).format(Math.abs(amount));
 };
 
-const BudgetHeader = ({ budgetStatus, onSettingsPress }) => {
-	const isPositive = budgetStatus?.availableBudget >= 0;
+interface BudgetHeaderProps {
+	budgetStatus: BudgetStatus | null;
+	onSettingsPress: () => void;
+}
+
+const BudgetHeader: React.FC<BudgetHeaderProps> = ({
+	budgetStatus,
+	onSettingsPress,
+}) => {
+	const isPositive = budgetStatus?.availableBudget
+		? budgetStatus.availableBudget >= 0
+		: true;
 
 	return (
 		<View style={styles.header}>

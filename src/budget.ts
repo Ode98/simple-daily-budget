@@ -1,46 +1,44 @@
-import { TRANSACTION_TYPES } from "./storage";
+import {
+	Transaction,
+	BudgetStatus,
+	MonthProjection,
+	TRANSACTION_TYPES,
+} from "./types";
 
 /**
  * Get the number of days in a given month
- * @param {number} year
- * @param {number} month - 0-indexed (0 = January)
- * @returns {number} Number of days in the month
  */
-export function getDaysInMonth(year, month) {
+export function getDaysInMonth(year: number, month: number): number {
 	return new Date(year, month + 1, 0).getDate();
 }
 
 /**
  * Get today's date at midnight (local time)
- * @returns {Date}
  */
-export function getToday() {
+export function getToday(): Date {
 	const now = new Date();
 	return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
 /**
  * Get the start of the current month
- * @returns {Date}
  */
-export function getMonthStart() {
+export function getMonthStart(): Date {
 	const now = new Date();
 	return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
 /**
  * Get the current day of the month (1-indexed)
- * @returns {number}
  */
-export function getCurrentDayOfMonth() {
+export function getCurrentDayOfMonth(): number {
 	return new Date().getDate();
 }
 
 /**
  * Get days remaining in the current month (including today)
- * @returns {number}
  */
-export function getDaysRemainingInMonth() {
+export function getDaysRemainingInMonth(): number {
 	const now = new Date();
 	const daysInMonth = getDaysInMonth(now.getFullYear(), now.getMonth());
 	return daysInMonth - now.getDate() + 1;
@@ -48,10 +46,8 @@ export function getDaysRemainingInMonth() {
 
 /**
  * Calculate daily allowance from monthly budget
- * @param {number} monthlyBudget - Monthly budget amount
- * @returns {number} Daily allowance
  */
-export function getDailyAllowance(monthlyBudget) {
+export function getDailyAllowance(monthlyBudget: number): number {
 	const now = new Date();
 	const daysInMonth = getDaysInMonth(now.getFullYear(), now.getMonth());
 	return monthlyBudget / daysInMonth;
@@ -59,13 +55,11 @@ export function getDailyAllowance(monthlyBudget) {
 
 /**
  * Parse a timestamp into a Date object, handling various formats
- * @param {string|number} timestamp - Timestamp in various formats
- * @returns {Date|null} Date object or null if invalid
  */
-function parseTimestamp(timestamp) {
+function parseTimestamp(timestamp: string | number | undefined): Date | null {
 	if (!timestamp) return null;
 
-	let date;
+	let date: Date;
 
 	if (typeof timestamp === "number") {
 		date = new Date(timestamp);
@@ -94,19 +88,11 @@ function parseTimestamp(timestamp) {
 
 /**
  * Calculate the available budget for today with rollover logic
- *
- * Logic:
- * - Start from day 1 of the month with daily allowance
- * - Each day adds daily allowance
- * - Each expense/auto_payment subtracts from total
- * - Each income adds to total
- * - Result can be negative
- *
- * @param {Array} transactions - Array of transactions
- * @param {number} monthlyBudget - Monthly budget amount
- * @returns {Object} { availableBudget, dailyAllowance, totalSpent, totalIncome, daysElapsed }
  */
-export function calculateBudgetStatus(transactions, monthlyBudget) {
+export function calculateBudgetStatus(
+	transactions: Transaction[],
+	monthlyBudget: number
+): BudgetStatus {
 	const now = new Date();
 	const monthStart = getMonthStart();
 
@@ -156,11 +142,11 @@ export function calculateBudgetStatus(transactions, monthlyBudget) {
 
 /**
  * Get a summary for the end of month projection
- * @param {Object} budgetStatus - Result from calculateBudgetStatus
- * @param {number} monthlyBudget - Monthly budget
- * @returns {Object} { projectedSavings, savingsRate }
  */
-export function getMonthProjection(budgetStatus, monthlyBudget) {
+export function getMonthProjection(
+	budgetStatus: BudgetStatus,
+	monthlyBudget: number
+): MonthProjection {
 	const { availableBudget, daysRemaining, dailyAllowance } = budgetStatus;
 
 	// If user continues their current pace, how much will they have at month end?
@@ -179,13 +165,11 @@ export function getMonthProjection(budgetStatus, monthlyBudget) {
 
 /**
  * Format a date for display
- * @param {string|number} timestamp - ISO date string or Unix timestamp
- * @returns {string} Formatted date
  */
-export function formatDate(timestamp) {
+export function formatDate(timestamp: string | number | undefined): string {
 	if (!timestamp) return "Unknown date";
 
-	let date;
+	let date: Date;
 
 	// Handle different timestamp formats
 	if (typeof timestamp === "number") {
@@ -220,11 +204,11 @@ export function formatDate(timestamp) {
 
 /**
  * Group transactions by day
- * @param {Array} transactions
- * @returns {Object} Grouped transactions { 'YYYY-MM-DD': [...transactions] }
  */
-export function groupTransactionsByDay(transactions) {
-	const groups = {};
+export function groupTransactionsByDay(
+	transactions: Transaction[]
+): Record<string, Transaction[]> {
+	const groups: Record<string, Transaction[]> = {};
 
 	for (const tx of transactions) {
 		const date = new Date(tx.timestamp);

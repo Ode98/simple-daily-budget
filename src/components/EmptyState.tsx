@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-const EmptyState = () => {
+const EmptyState: React.FC = () => {
 	return (
 		<View style={styles.container}>
 			<Text style={styles.icon}>📊</Text>

@@ -11,7 +11,23 @@ import {
 	Platform,
 } from "react-native";
 
-const FormModal = ({
+interface FormModalProps {
+	visible: boolean;
+	onClose: () => void;
+	title: string;
+	onSubmit: () => void;
+	submitText: string;
+	amountValue: string;
+	onAmountChange: (value: string) => void;
+	descriptionValue: string;
+	onDescriptionChange: (value: string) => void;
+	showDescription?: boolean;
+	showDelete?: boolean;
+	onDelete?: () => void;
+	autoFocusAmount?: boolean;
+}
+
+const FormModal: React.FC<FormModalProps> = ({
 	visible,
 	onClose,
 	title,
@@ -26,8 +42,10 @@ const FormModal = ({
 	onDelete,
 	autoFocusAmount = true,
 }) => {
-	const inputRef = React.useRef(null);
-	const [selection, setSelection] = React.useState(undefined);
+	const inputRef = React.useRef<TextInput>(null);
+	const [selection, setSelection] = React.useState<
+		{ start: number; end: number } | undefined
+	>(undefined);
 
 	// Focus input when modal becomes visible (only if autoFocusAmount is true)
 	React.useEffect(() => {

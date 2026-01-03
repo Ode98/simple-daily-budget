@@ -1,3 +1,5 @@
+import { Transaction, RawNotification, TRANSACTION_TYPES } from "./types";
+
 /**
  * Google Wallet package name (same for all of Europe including Finland)
  */
@@ -6,32 +8,24 @@ export const GOOGLE_WALLET_PACKAGE = "com.google.android.apps.walletnfcrel";
 /**
  * Parse amount from Google Pay notification text
  * Handles Finnish locale (comma as decimal separator)
- *
- * Examples:
- * - "Payment of €12,50 at Store Name"
- * - "12,50 € maksu Store Name"
- * - "Paid €12.50 to Store Name"
- *
- * @param {string} text - Notification text
- * @returns {number|null} Amount in euros or null if not found
  */
-export function parseAmount(text) {
+export function parseAmount(text: string | undefined): number | null {
 	if (!text) return null;
 
 	// Match patterns like "€12,50", "12,50 €", "€12.50", "12.50€"
 	// Also handles thousands separator: "1 234,50 €" or "1,234.50 €"
 	const patterns = [
-		/€\s*([\d\s]+[,.][\d]{2})/, // €12,50 or € 12,50
-		/([\d\s]+[,.][\d]{2})\s*€/, // 12,50 € or 12,50€
-		/EUR\s*([\d\s]+[,.][\d]{2})/i, // EUR 12,50
-		/([\d\s]+[,.][\d]{2})\s*EUR/i, // 12,50 EUR
+		/€\s*([\d\s]+[,.]\d{2})/, // €12,50 or € 12,50
+		/([\d\s]+[,.]\d{2})\s*€/, // 12,50 € or 12,50€
+		/EUR\s*([\d\s]+[,.]\d{2})/i, // EUR 12,50
+		/([\d\s]+[,.]\d{2})\s*EUR/i, // 12,50 EUR
 	];
 
 	for (const pattern of patterns) {
 		const match = text.match(pattern);
 		if (match) {
 			// Clean up the number: remove spaces, replace comma with dot
-			let numStr = match[1].replace(/\s/g, "").replace(",", ".");
+			const numStr = match[1].replace(/\s/g, "").replace(",", ".");
 			const amount = parseFloat(numStr);
 			if (!isNaN(amount)) {
 				return amount;
@@ -44,12 +38,11 @@ export function parseAmount(text) {
 
 /**
  * Parse merchant/company name from Google Pay notification
- *
- * @param {string} text - Notification text
- * @param {string} title - Notification title
- * @returns {string} Merchant name or 'Unknown'
  */
-export function parseMerchant(text, title) {
+export function parseMerchant(
+	text: string | undefined,
+	title: string | undefined
+): string {
 	if (!text && !title) return "Unknown";
 
 	// Common patterns in Google Pay notifications
@@ -82,13 +75,12 @@ export function parseMerchant(text, title) {
 
 /**
  * Parse a notification into a payment object
- *
- * @param {Object} notification - Raw notification object from listener
- * @returns {Object|null} Parsed payment or null if not a payment notification
  */
-export function parsePaymentNotification(notification) {
+export function parsePaymentNotification(
+	notification: RawNotification | string
+): Transaction | null {
 	try {
-		const data =
+		const data: RawNotification =
 			typeof notification === "string"
 				? JSON.parse(notification)
 				: notification;
@@ -117,7 +109,7 @@ export function parsePaymentNotification(notification) {
 			id: `${data.time}_${Date.now()}`,
 			timestamp,
 			amount,
-			type: "auto_payment",
+			type: TRANSACTION_TYPES.AUTO_PAYMENT,
 			description: parseMerchant(text, title),
 			source: "auto",
 		};
