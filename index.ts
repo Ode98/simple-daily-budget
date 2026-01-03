@@ -46,6 +46,7 @@ async function updateWidget(transactions: Transaction[]): Promise<void> {
 			settings.monthlyBudget
 		);
 		const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+		const isNegative = budgetStatus.availableBudget < 0;
 
 		// Update the widget (using require to avoid JSX in .ts file)
 		requestWidgetUpdate({
@@ -53,7 +54,10 @@ async function updateWidget(transactions: Transaction[]): Promise<void> {
 			renderWidget: () => {
 				const React = require("react");
 				const { BudgetWidget } = require("./src/widgets/BudgetWidget");
-				return React.createElement(BudgetWidget, { budget: formattedBudget });
+				return React.createElement(BudgetWidget, {
+					budget: formattedBudget,
+					isNegative,
+				});
 			},
 			widgetNotFound: () => {
 				// Widget not added to home screen yet

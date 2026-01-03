@@ -268,12 +268,15 @@ export default function App(): React.JSX.Element {
 	useEffect(() => {
 		if (budgetStatus) {
 			const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+			const isNegative = budgetStatus.availableBudget < 0;
 			// Trigger widget update with current budget data
 			requestWidgetUpdate({
 				widgetName: "BudgetWidget",
 				renderWidget: () => {
 					const { BudgetWidget } = require("./src/widgets/BudgetWidget");
-					return <BudgetWidget budget={formattedBudget} />;
+					return (
+						<BudgetWidget budget={formattedBudget} isNegative={isNegative} />
+					);
 				},
 				widgetNotFound: () => {
 					// Widget not added to home screen yet

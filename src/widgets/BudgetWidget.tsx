@@ -3,13 +3,22 @@ import { FlexWidget, TextWidget } from "react-native-android-widget";
 
 interface BudgetWidgetProps {
 	budget: string;
+	isNegative?: boolean;
 }
 
 /**
  * Android home screen widget that displays the current available budget.
  * Clicking the widget opens the main app.
  */
-export function BudgetWidget({ budget }: BudgetWidgetProps) {
+export function BudgetWidget({
+	budget,
+	isNegative = false,
+}: BudgetWidgetProps) {
+	// Add minus sign for negative values and choose color
+	// Note: formatCurrency usually adds the minus sign, but we ensure it here if needed
+	const displayBudget = isNegative ? `-${budget}` : budget;
+	const budgetColor = isNegative ? "#ef4444" : "#4ade80"; // red for negative, green for positive
+
 	return (
 		<FlexWidget
 			style={{
@@ -27,17 +36,17 @@ export function BudgetWidget({ budget }: BudgetWidgetProps) {
 			<TextWidget
 				text="Available"
 				style={{
-					fontSize: 12,
+					fontSize: 14,
 					color: "#a0a0a0",
 					marginBottom: 4,
 				}}
 			/>
 			<TextWidget
-				text={budget}
+				text={displayBudget}
 				style={{
-					fontSize: 24,
+					fontSize: 32,
 					fontWeight: "bold",
-					color: "#4ade80",
+					color: budgetColor,
 				}}
 			/>
 		</FlexWidget>
