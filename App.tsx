@@ -16,6 +16,7 @@ import {
 	ListRenderItem,
 } from "react-native";
 import RNAndroidNotificationListener from "react-native-android-notification-listener";
+import { requestWidgetUpdate } from "react-native-android-widget";
 
 // Types
 import {
@@ -258,6 +259,29 @@ export default function App(): React.JSX.Element {
 		]);
 	};
 
+	// Calculate budget status (moved before hooks to avoid conditional hook calls)
+	const budgetStatus: BudgetStatus | null = budgetSettings
+		? calculateBudgetStatus(transactions, budgetSettings.monthlyBudget)
+		: null;
+
+	// Update widget when budget changes
+	useEffect(() => {
+		if (budgetStatus) {
+			const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+			// Trigger widget update with current budget data
+			requestWidgetUpdate({
+				widgetName: "BudgetWidget",
+				renderWidget: () => {
+					const { BudgetWidget } = require("./src/widgets/BudgetWidget");
+					return <BudgetWidget budget={formattedBudget} />;
+				},
+				widgetNotFound: () => {
+					// Widget not added to home screen yet
+				},
+			});
+		}
+	}, [budgetStatus?.availableBudget]);
+
 	// Memoized render function for FlatList
 	const renderItem: ListRenderItem<Transaction> = useCallback(
 		({ item }) => (
@@ -278,11 +302,6 @@ export default function App(): React.JSX.Element {
 			/>
 		);
 	}
-
-	// Calculate budget status
-	const budgetStatus: BudgetStatus | null = budgetSettings
-		? calculateBudgetStatus(transactions, budgetSettings.monthlyBudget)
-		: null;
 
 	return (
 		<View style={styles.container}>

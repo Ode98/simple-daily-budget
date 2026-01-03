@@ -2,8 +2,10 @@ import { registerRootComponent } from "expo";
 import { AppRegistry } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RNAndroidNotificationListenerHeadlessJsName } from "react-native-android-notification-listener";
+import { registerWidgetTaskHandler } from "react-native-android-widget";
 import { parsePaymentNotification, GOOGLE_WALLET_PACKAGE } from "./src/parser";
 import { RawNotification, Transaction } from "./src/types";
+import { widgetTaskHandler } from "./src/widgets/widget-task-handler";
 
 import App from "./App";
 
@@ -62,3 +64,6 @@ AppRegistry.registerHeadlessTask(
 
 // Register the main app component
 registerRootComponent(App);
+
+// Register the widget task handler
+registerWidgetTaskHandler(widgetTaskHandler);
