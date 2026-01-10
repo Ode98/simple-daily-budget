@@ -5,10 +5,6 @@ import { Transaction, RawNotification, TRANSACTION_TYPES } from "./types";
  */
 export const GOOGLE_WALLET_PACKAGE = "com.google.android.apps.walletnfcrel";
 
-/**
- * Parse amount from Google Pay notification text
- * Handles Finnish locale (comma as decimal separator)
- */
 export function parseAmount(text: string | undefined): number | null {
 	if (!text) return null;
 
@@ -36,9 +32,6 @@ export function parseAmount(text: string | undefined): number | null {
 	return null;
 }
 
-/**
- * Parse merchant/company name from Google Pay notification
- */
 export function parseMerchant(
 	text: string | undefined,
 	title: string | undefined
@@ -73,9 +66,6 @@ export function parseMerchant(
 	return "Unknown";
 }
 
-/**
- * Parse a notification into a payment object
- */
 export function parsePaymentNotification(
 	notification: RawNotification | string
 ): Transaction | null {

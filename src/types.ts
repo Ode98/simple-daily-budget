@@ -1,10 +1,3 @@
-/**
- * Shared TypeScript types for the budget app
- */
-
-/**
- * Transaction type constants
- */
 export const TRANSACTION_TYPES = {
 	EXPENSE: "expense",
 	INCOME: "income",
@@ -14,9 +7,6 @@ export const TRANSACTION_TYPES = {
 export type TransactionType =
 	(typeof TRANSACTION_TYPES)[keyof typeof TRANSACTION_TYPES];
 
-/**
- * Transaction data structure
- */
 export interface Transaction {
 	id: string;
 	timestamp: string;
@@ -28,17 +18,11 @@ export interface Transaction {
 	rawNotification?: RawNotification;
 }
 
-/**
- * Budget settings stored in AsyncStorage
- */
 export interface BudgetSettings {
 	monthlyBudget: number;
 	startDate: string;
 }
 
-/**
- * Calculated budget status returned by calculateBudgetStatus
- */
 export interface BudgetStatus {
 	availableBudget: number;
 	dailyAllowance: number;
@@ -50,17 +34,11 @@ export interface BudgetStatus {
 	daysInMonth: number;
 }
 
-/**
- * Month projection data
- */
 export interface MonthProjection {
 	projectedEndBalance: number;
 	savingsRate: number;
 }
 
-/**
- * Raw notification data from Android notification listener
- */
 export interface RawNotification {
 	app: string;
 	title?: string;
@@ -70,9 +48,6 @@ export interface RawNotification {
 	time?: string | number;
 }
 
-/**
- * Transaction updates for editing
- */
 export interface TransactionUpdates {
 	amount?: number;
 	description?: string;

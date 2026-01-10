@@ -7,7 +7,6 @@ import {
 	TransactionType,
 } from "./types";
 
-// Re-export for convenience
 export { TRANSACTION_TYPES } from "./types";
 
 const STORAGE_KEYS = {
@@ -15,9 +14,6 @@ const STORAGE_KEYS = {
 	BUDGET_SETTINGS: "@budget_settings",
 } as const;
 
-/**
- * Get budget settings
- */
 export async function getBudgetSettings(): Promise<BudgetSettings | null> {
 	try {
 		const data = await AsyncStorage.getItem(STORAGE_KEYS.BUDGET_SETTINGS);
@@ -28,9 +24,6 @@ export async function getBudgetSettings(): Promise<BudgetSettings | null> {
 	}
 }
 
-/**
- * Save budget settings
- */
 export async function saveBudgetSettings(
 	settings: BudgetSettings
 ): Promise<boolean> {
@@ -46,9 +39,6 @@ export async function saveBudgetSettings(
 	}
 }
 
-/**
- * Save a new transaction
- */
 export async function saveTransaction(
 	transaction: Transaction
 ): Promise<Transaction[]> {
@@ -66,9 +56,6 @@ export async function saveTransaction(
 	}
 }
 
-/**
- * Get all stored transactions
- */
 export async function getTransactions(): Promise<Transaction[]> {
 	try {
 		const data = await AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
@@ -79,9 +66,6 @@ export async function getTransactions(): Promise<Transaction[]> {
 	}
 }
 
-/**
- * Clear all stored transactions
- */
 export async function clearTransactions(): Promise<void> {
 	try {
 		await AsyncStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
@@ -90,9 +74,6 @@ export async function clearTransactions(): Promise<void> {
 	}
 }
 
-/**
- * Delete a transaction by ID
- */
 export async function deleteTransaction(id: string): Promise<Transaction[]> {
 	try {
 		const existing = await getTransactions();
@@ -108,9 +89,6 @@ export async function deleteTransaction(id: string): Promise<Transaction[]> {
 	}
 }
 
-/**
- * Update a transaction by ID
- */
 export async function updateTransaction(
 	id: string,
 	updates: TransactionUpdates
@@ -142,9 +120,6 @@ export async function updateTransaction(
 	}
 }
 
-/**
- * Create a manual transaction
- */
 export function createTransaction(
 	amount: number,
 	type: TransactionType,
@@ -161,9 +136,6 @@ export function createTransaction(
 	};
 }
 
-/**
- * Legacy support - migrate old notifications to new format
- */
 export async function migrateOldData(): Promise<void> {
 	try {
 		const oldData = await AsyncStorage.getItem("@payment_notifications");
