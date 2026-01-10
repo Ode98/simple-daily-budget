@@ -9,6 +9,7 @@ import {
 	EmptyState,
 	BudgetModal,
 	TransactionList,
+	ErrorBoundary,
 } from "./src/components";
 
 import { usePermission } from "./src/hooks/usePermission";
@@ -83,98 +84,102 @@ export default function App(): React.JSX.Element {
 
 	if (permissionStatus !== "authorized") {
 		return (
-			<PermissionScreen
-				onRequestPermission={requestPermission}
-				onCheckPermission={checkPermission}
-			/>
+			<ErrorBoundary>
+				<PermissionScreen
+					onRequestPermission={requestPermission}
+					onCheckPermission={checkPermission}
+				/>
+			</ErrorBoundary>
 		);
 	}
 
 	return (
-		<View style={styles.container}>
-			<StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+		<ErrorBoundary>
+			<View style={styles.container}>
+				<StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
 
-			<BudgetHeader
-				budgetStatus={budgetStatus}
-				onSettingsPress={handleResetBudget}
-			/>
-
-			<ActionButtons
-				onExpensePress={() => setShowExpenseModal(true)}
-				onIncomePress={() => setShowIncomeModal(true)}
-			/>
-
-			{transactions.length === 0 ? (
-				<EmptyState />
-			) : (
-				<TransactionList
-					sections={sections}
-					refreshing={refreshing}
-					onRefresh={onRefresh}
-					onTransactionPress={handleTransactionPress}
+				<BudgetHeader
+					budgetStatus={budgetStatus}
+					onSettingsPress={handleResetBudget}
 				/>
-			)}
 
-			<BudgetModal
-				visible={showBudgetModal}
-				budgetSettings={budgetSettings}
-				budgetInput={budgetInput}
-				onBudgetInputChange={setBudgetInput}
-				onSave={handleSaveBudget}
-				onClose={() => setShowBudgetModal(false)}
-			/>
+				<ActionButtons
+					onExpensePress={() => setShowExpenseModal(true)}
+					onIncomePress={() => setShowIncomeModal(true)}
+				/>
 
-			<FormModal
-				visible={showExpenseModal}
-				onClose={() => {
-					setShowExpenseModal(false);
-					setExpenseAmount("");
-					setExpenseDescription("");
-				}}
-				title="Add Expense"
-				onSubmit={handleAddExpense}
-				submitText="Add"
-				amountValue={expenseAmount}
-				onAmountChange={setExpenseAmount}
-				descriptionValue={expenseDescription}
-				onDescriptionChange={setExpenseDescription}
-			/>
+				{transactions.length === 0 ? (
+					<EmptyState />
+				) : (
+					<TransactionList
+						sections={sections}
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						onTransactionPress={handleTransactionPress}
+					/>
+				)}
 
-			<FormModal
-				visible={showIncomeModal}
-				onClose={() => {
-					setShowIncomeModal(false);
-					setIncomeAmount("");
-					setIncomeDescription("");
-				}}
-				title="Add Income"
-				onSubmit={handleAddIncome}
-				submitText="Add"
-				amountValue={incomeAmount}
-				onAmountChange={setIncomeAmount}
-				descriptionValue={incomeDescription}
-				onDescriptionChange={setIncomeDescription}
-			/>
+				<BudgetModal
+					visible={showBudgetModal}
+					budgetSettings={budgetSettings}
+					budgetInput={budgetInput}
+					onBudgetInputChange={setBudgetInput}
+					onSave={handleSaveBudget}
+					onClose={() => setShowBudgetModal(false)}
+				/>
 
-			<FormModal
-				visible={showEditModal}
-				onClose={() => {
-					setShowEditModal(false);
-					setEditAmount("");
-					setEditDescription("");
-				}}
-				title="Edit Transaction"
-				onSubmit={handleSaveEdit}
-				submitText="Save"
-				amountValue={editAmount}
-				onAmountChange={setEditAmount}
-				descriptionValue={editDescription}
-				onDescriptionChange={setEditDescription}
-				showDelete={true}
-				onDelete={handleDeleteTransaction}
-				rawNotification={editingTransaction?.rawNotification}
-			/>
-		</View>
+				<FormModal
+					visible={showExpenseModal}
+					onClose={() => {
+						setShowExpenseModal(false);
+						setExpenseAmount("");
+						setExpenseDescription("");
+					}}
+					title="Add Expense"
+					onSubmit={handleAddExpense}
+					submitText="Add"
+					amountValue={expenseAmount}
+					onAmountChange={setExpenseAmount}
+					descriptionValue={expenseDescription}
+					onDescriptionChange={setExpenseDescription}
+				/>
+
+				<FormModal
+					visible={showIncomeModal}
+					onClose={() => {
+						setShowIncomeModal(false);
+						setIncomeAmount("");
+						setIncomeDescription("");
+					}}
+					title="Add Income"
+					onSubmit={handleAddIncome}
+					submitText="Add"
+					amountValue={incomeAmount}
+					onAmountChange={setIncomeAmount}
+					descriptionValue={incomeDescription}
+					onDescriptionChange={setIncomeDescription}
+				/>
+
+				<FormModal
+					visible={showEditModal}
+					onClose={() => {
+						setShowEditModal(false);
+						setEditAmount("");
+						setEditDescription("");
+					}}
+					title="Edit Transaction"
+					onSubmit={handleSaveEdit}
+					submitText="Save"
+					amountValue={editAmount}
+					onAmountChange={setEditAmount}
+					descriptionValue={editDescription}
+					onDescriptionChange={setEditDescription}
+					showDelete={true}
+					onDelete={handleDeleteTransaction}
+					rawNotification={editingTransaction?.rawNotification}
+				/>
+			</View>
+		</ErrorBoundary>
 	);
 }
 

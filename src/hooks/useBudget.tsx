@@ -77,20 +77,24 @@ export const useBudget = (transactions: Transaction[]): UseBudgetResult => {
 
 	useEffect(() => {
 		if (budgetStatus) {
-			const formattedBudget = formatCurrency(budgetStatus.availableBudget);
-			const isNegative = budgetStatus.availableBudget < 0;
-			requestWidgetUpdate({
-				widgetName: "BudgetWidget",
-				renderWidget: () => {
-					const { BudgetWidget } = require("../widgets/BudgetWidget");
-					return (
-						<BudgetWidget budget={formattedBudget} isNegative={isNegative} />
-					);
-				},
-				widgetNotFound: () => {
-					// Widget not added to home screen yet
-				},
-			});
+			try {
+				const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+				const isNegative = budgetStatus.availableBudget < 0;
+				requestWidgetUpdate({
+					widgetName: "BudgetWidget",
+					renderWidget: () => {
+						const { BudgetWidget } = require("../widgets/BudgetWidget");
+						return (
+							<BudgetWidget budget={formattedBudget} isNegative={isNegative} />
+						);
+					},
+					widgetNotFound: () => {
+						// Widget not added to home screen yet
+					},
+				});
+			} catch (error) {
+				console.error("Failed to update widget:", error);
+			}
 		}
 	}, [budgetStatus?.availableBudget]);
 

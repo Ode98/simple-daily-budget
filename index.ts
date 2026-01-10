@@ -10,6 +10,7 @@ import { parsePaymentNotification, GOOGLE_WALLET_PACKAGE } from "./src/parser";
 import { RawNotification, Transaction, BudgetSettings } from "./src/types";
 import { calculateBudgetStatus } from "./src/budget";
 import { widgetTaskHandler } from "./src/widgets/widget-task-handler";
+import { safeJsonParse, ensureArray, ensureObject } from "./src/utils/safeJson";
 
 import App from "./App";
 
@@ -40,7 +41,13 @@ async function updateWidget(transactions: Transaction[]): Promise<void> {
 			return;
 		}
 
-		const settings: BudgetSettings = JSON.parse(settingsData);
+		const settings = ensureObject<BudgetSettings>(
+			safeJsonParse<BudgetSettings | null>(settingsData, null)
+		);
+		if (!settings) {
+			console.log("Invalid budget settings data, skipping widget update");
+			return;
+		}
 		const budgetStatus = calculateBudgetStatus(
 			transactions,
 			settings.monthlyBudget
@@ -80,11 +87,18 @@ const headlessNotificationListener = async ({
 	if (!notification) return;
 
 	try {
-		// Parse the notification JSON
-		const data: RawNotification =
-			typeof notification === "string"
-				? JSON.parse(notification)
-				: notification;
+		// Parse the notification JSON safely
+		let data: RawNotification;
+		if (typeof notification === "string") {
+			const parsed = safeJsonParse<RawNotification | null>(notification, null);
+			if (!parsed) {
+				console.error("Failed to parse notification JSON");
+				return;
+			}
+			data = parsed;
+		} else {
+			data = notification;
+		}
 
 		// Only process Google Wallet notifications
 		if (data.app !== GOOGLE_WALLET_PACKAGE) {
@@ -99,9 +113,9 @@ const headlessNotificationListener = async ({
 		if (transaction) {
 			// Save to storage
 			const existingData = await AsyncStorage.getItem(STORAGE_KEY);
-			const existing: Transaction[] = existingData
-				? JSON.parse(existingData)
-				: [];
+			const existing = ensureArray<Transaction>(
+				safeJsonParse<Transaction[]>(existingData ?? "", [])
+			);
 			const updated = [transaction, ...existing];
 			await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 			console.log("Transaction saved:", transaction);
@@ -115,13 +129,21 @@ const headlessNotificationListener = async ({
 };
 
 // Register the headless task - this MUST be done early in the app lifecycle
-AppRegistry.registerHeadlessTask(
-	RNAndroidNotificationListenerHeadlessJsName,
-	() => headlessNotificationListener
-);
+try {
+	AppRegistry.registerHeadlessTask(
+		RNAndroidNotificationListenerHeadlessJsName,
+		() => headlessNotificationListener
+	);
+} catch (error) {
+	console.error("Failed to register headless task:", error);
+}
 
 // Register the main app component
 registerRootComponent(App);
 
 // Register the widget task handler
-registerWidgetTaskHandler(widgetTaskHandler);
+try {
+	registerWidgetTaskHandler(widgetTaskHandler);
+} catch (error) {
+	console.error("Failed to register widget task handler:", error);
+}

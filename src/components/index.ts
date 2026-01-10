@@ -6,3 +6,4 @@ export { default as PermissionScreen } from "./PermissionScreen";
 export { default as EmptyState } from "./EmptyState";
 export { BudgetModal } from "./BudgetModal";
 export { TransactionList } from "./TransactionList";
+export { ErrorBoundary } from "./ErrorBoundary";

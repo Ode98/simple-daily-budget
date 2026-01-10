@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BudgetWidget } from "./BudgetWidget";
 import { BudgetSettings, Transaction } from "../types";
 import { calculateBudgetStatus } from "../budget";
+import { safeJsonParse, ensureArray, ensureObject } from "../utils/safeJson";
 
 const STORAGE_KEY = "@budget_transactions";
 const BUDGET_SETTINGS_KEY = "@budget_settings";
@@ -42,10 +43,19 @@ export async function widgetTaskHandler(
 					break;
 				}
 
-				const settings: BudgetSettings = JSON.parse(settingsData);
-				const transactions: Transaction[] = transactionsData
-					? JSON.parse(transactionsData)
-					: [];
+				const settings = ensureObject<BudgetSettings>(
+					safeJsonParse<BudgetSettings | null>(settingsData, null)
+				);
+				if (!settings) {
+					props.renderWidget(
+						<BudgetWidget budget="Data error" isNegative={false} />
+					);
+					break;
+				}
+
+				const transactions = ensureArray<Transaction>(
+					safeJsonParse<Transaction[]>(transactionsData ?? "", [])
+				);
 
 				const budgetStatus = calculateBudgetStatus(
 					transactions,

@@ -6,6 +6,7 @@ import {
 	TRANSACTION_TYPES,
 	TransactionType,
 } from "./types";
+import { safeJsonParse, ensureArray, ensureObject } from "./utils/safeJson";
 
 export { TRANSACTION_TYPES } from "./types";
 
@@ -17,7 +18,9 @@ const STORAGE_KEYS = {
 export async function getBudgetSettings(): Promise<BudgetSettings | null> {
 	try {
 		const data = await AsyncStorage.getItem(STORAGE_KEYS.BUDGET_SETTINGS);
-		return data ? JSON.parse(data) : null;
+		if (!data) return null;
+		const parsed = safeJsonParse<BudgetSettings | null>(data, null);
+		return ensureObject<BudgetSettings>(parsed);
 	} catch (error) {
 		console.error("Error reading budget settings:", error);
 		return null;
@@ -59,7 +62,9 @@ export async function saveTransaction(
 export async function getTransactions(): Promise<Transaction[]> {
 	try {
 		const data = await AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-		return data ? JSON.parse(data) : [];
+		if (!data) return [];
+		const parsed = safeJsonParse<Transaction[]>(data, []);
+		return ensureArray<Transaction>(parsed);
 	} catch (error) {
 		console.error("Error reading transactions:", error);
 		return [];
@@ -147,7 +152,9 @@ export async function migrateOldData(): Promise<void> {
 				merchant?: string;
 			}
 
-			const oldNotifications: OldNotification[] = JSON.parse(oldData);
+			const oldNotifications = ensureArray<OldNotification>(
+				safeJsonParse<OldNotification[]>(oldData, [])
+			);
 			const migratedTransactions: Transaction[] = oldNotifications.map((n) => ({
 				id: n.id,
 				timestamp: n.timestamp,
