@@ -30,14 +30,12 @@ export async function widgetTaskHandler(
 		case "WIDGET_UPDATE":
 		case "WIDGET_RESIZED":
 			try {
-				// Fetch settings and transactions
 				const [settingsData, transactionsData] = await Promise.all([
 					AsyncStorage.getItem(BUDGET_SETTINGS_KEY),
 					AsyncStorage.getItem(STORAGE_KEY),
 				]);
 
 				if (!settingsData) {
-					// No budget set yet
 					props.renderWidget(
 						<BudgetWidget budget="Setup app" isNegative={false} />
 					);
@@ -49,7 +47,6 @@ export async function widgetTaskHandler(
 					? JSON.parse(transactionsData)
 					: [];
 
-				// Calculate budget status
 				const budgetStatus = calculateBudgetStatus(
 					transactions,
 					settings.monthlyBudget
@@ -62,17 +59,14 @@ export async function widgetTaskHandler(
 				);
 			} catch (error) {
 				console.error("Error updating widget:", error);
-				// Fallback in case of error
 				props.renderWidget(<BudgetWidget budget="Error" />);
 			}
 			break;
 
 		case "WIDGET_DELETED":
-			// Clean up if needed
 			break;
 
 		case "WIDGET_CLICK":
-			// Handle click action - OPEN_APP is handled automatically
 			break;
 
 		default:
