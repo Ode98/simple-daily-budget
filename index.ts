@@ -1,8 +1,6 @@
-// Polyfill for headless task compatibility with Hermes in release builds
-// This must be at the very top before any other imports
-if (typeof setImmediate === "undefined") {
-	(global as any).setImmediate = (fn: () => void) => setTimeout(fn, 0);
-}
+// Polyfills for headless task compatibility with Hermes in release builds
+// This MUST be the very first import before anything else
+import "./polyfills";
 
 import { registerRootComponent } from "expo";
 import { AppRegistry } from "react-native";
