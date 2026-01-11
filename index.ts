@@ -1,3 +1,9 @@
+// Polyfill for headless task compatibility with Hermes in release builds
+// This must be at the very top before any other imports
+if (typeof setImmediate === "undefined") {
+	(global as any).setImmediate = (fn: () => void) => setTimeout(fn, 0);
+}
+
 import { registerRootComponent } from "expo";
 import { AppRegistry } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -80,52 +86,69 @@ async function updateWidget(transactions: Transaction[]): Promise<void> {
 /**
  * Headless task that runs in the background when notifications are received.
  * This runs even when the app is closed.
+ *
+ * IMPORTANT: We wrap all async work in setTimeout to defer it off the microtask queue.
+ * This is required because Hermes disables microtasks in headless/background runtime,
+ * which causes crashes when using async/await directly.
  */
-const headlessNotificationListener = async ({
+const headlessNotificationListener = ({
 	notification,
 }: HeadlessTaskData): Promise<void> => {
-	if (!notification) return;
+	return new Promise((resolve) => {
+		// Defer all async work using setTimeout to avoid microtask queue issues in Hermes
+		setTimeout(() => {
+			(async () => {
+				if (!notification) return;
 
-	try {
-		// Parse the notification JSON safely
-		let data: RawNotification;
-		if (typeof notification === "string") {
-			const parsed = safeJsonParse<RawNotification | null>(notification, null);
-			if (!parsed) {
-				console.error("Failed to parse notification JSON");
-				return;
-			}
-			data = parsed;
-		} else {
-			data = notification;
-		}
+				try {
+					// Parse the notification JSON safely
+					let data: RawNotification;
+					if (typeof notification === "string") {
+						const parsed = safeJsonParse<RawNotification | null>(
+							notification,
+							null
+						);
+						if (!parsed) {
+							console.error("Failed to parse notification JSON");
+							return;
+						}
+						data = parsed;
+					} else {
+						data = notification;
+					}
 
-		// Only process Google Wallet notifications
-		if (data.app !== GOOGLE_WALLET_PACKAGE) {
-			return;
-		}
+					// Only process Google Wallet notifications
+					if (data.app !== GOOGLE_WALLET_PACKAGE) {
+						return;
+					}
 
-		console.log("Google Wallet notification received:", data);
+					console.log("Google Wallet notification received:", data);
 
-		// Parse into transaction object (now in new format)
-		const transaction: Transaction | null = parsePaymentNotification(data);
+					// Parse into transaction object (now in new format)
+					const transaction: Transaction | null =
+						parsePaymentNotification(data);
 
-		if (transaction) {
-			// Save to storage
-			const existingData = await AsyncStorage.getItem(STORAGE_KEY);
-			const existing = ensureArray<Transaction>(
-				safeJsonParse<Transaction[]>(existingData ?? "", [])
-			);
-			const updated = [transaction, ...existing];
-			await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-			console.log("Transaction saved:", transaction);
+					if (transaction) {
+						// Save to storage
+						const existingData = await AsyncStorage.getItem(STORAGE_KEY);
+						const existing = ensureArray<Transaction>(
+							safeJsonParse<Transaction[]>(existingData ?? "", [])
+						);
+						const updated = [transaction, ...existing];
+						await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+						console.log("Transaction saved:", transaction);
 
-			// Update the widget with new budget
-			await updateWidget(updated);
-		}
-	} catch (error) {
-		console.error("Error in headless notification listener:", error);
-	}
+						// Update the widget with new budget
+						await updateWidget(updated);
+					}
+				} catch (error) {
+					console.error("Error in headless notification listener:", error);
+				}
+			})().finally(() => {
+				resolve();
+			});
+		}, 0);
+	});
 };
 
 // Register the headless task - this MUST be done early in the app lifecycle
