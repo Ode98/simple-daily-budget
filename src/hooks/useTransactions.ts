@@ -21,7 +21,6 @@ interface UseTransactionsResult {
 	transactions: Transaction[];
 	sections: TransactionSection[];
 	loadTransactions: () => Promise<Transaction[]>;
-	// Expense form
 	expenseAmount: string;
 	setExpenseAmount: (value: string) => void;
 	expenseDescription: string;
@@ -29,7 +28,6 @@ interface UseTransactionsResult {
 	showExpenseModal: boolean;
 	setShowExpenseModal: (value: boolean) => void;
 	handleAddExpense: () => Promise<void>;
-	// Income form
 	incomeAmount: string;
 	setIncomeAmount: (value: string) => void;
 	incomeDescription: string;
@@ -37,7 +35,6 @@ interface UseTransactionsResult {
 	showIncomeModal: boolean;
 	setShowIncomeModal: (value: boolean) => void;
 	handleAddIncome: () => Promise<void>;
-	// Edit form
 	editingTransaction: Transaction | null;
 	editAmount: string;
 	setEditAmount: (value: string) => void;
@@ -53,17 +50,12 @@ interface UseTransactionsResult {
 export const useTransactions = (): UseTransactionsResult => {
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-	// Expense form state
 	const [expenseAmount, setExpenseAmount] = useState<string>("");
 	const [expenseDescription, setExpenseDescription] = useState<string>("");
 	const [showExpenseModal, setShowExpenseModal] = useState<boolean>(false);
-
-	// Income form state
 	const [incomeAmount, setIncomeAmount] = useState<string>("");
 	const [incomeDescription, setIncomeDescription] = useState<string>("");
 	const [showIncomeModal, setShowIncomeModal] = useState<boolean>(false);
-
-	// Edit form state
 	const [editingTransaction, setEditingTransaction] =
 		useState<Transaction | null>(null);
 	const [editAmount, setEditAmount] = useState<string>("");
@@ -73,7 +65,7 @@ export const useTransactions = (): UseTransactionsResult => {
 	const sections = useMemo(() => {
 		const grouped = groupTransactionsByDay(transactions);
 		return Object.keys(grouped)
-			.sort((a, b) => b.localeCompare(a)) // Descending order
+			.sort((a, b) => b.localeCompare(a))
 			.map((date) => ({
 				title: date,
 				data: grouped[date],
@@ -183,7 +175,6 @@ export const useTransactions = (): UseTransactionsResult => {
 		transactions,
 		sections,
 		loadTransactions,
-		// Expense
 		expenseAmount,
 		setExpenseAmount,
 		expenseDescription,
@@ -191,7 +182,6 @@ export const useTransactions = (): UseTransactionsResult => {
 		showExpenseModal,
 		setShowExpenseModal,
 		handleAddExpense,
-		// Income
 		incomeAmount,
 		setIncomeAmount,
 		incomeDescription,
@@ -199,7 +189,6 @@ export const useTransactions = (): UseTransactionsResult => {
 		showIncomeModal,
 		setShowIncomeModal,
 		handleAddIncome,
-		// Edit
 		editingTransaction,
 		editAmount,
 		setEditAmount,

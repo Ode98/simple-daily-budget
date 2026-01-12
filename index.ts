@@ -21,7 +21,6 @@ import App from "./App";
 const STORAGE_KEY = "@budget_transactions";
 const BUDGET_SETTINGS_KEY = "@budget_settings";
 
-// Format currency helper (same as in App.tsx)
 const formatCurrency = (amount: number): string => {
 	return new Intl.NumberFormat("fi-FI", {
 		style: "currency",
@@ -33,12 +32,8 @@ interface HeadlessTaskData {
 	notification: string | RawNotification | null;
 }
 
-/**
- * Update the widget with the current budget
- */
 async function updateWidget(transactions: Transaction[]): Promise<void> {
 	try {
-		// Get budget settings
 		const settingsData = await AsyncStorage.getItem(BUDGET_SETTINGS_KEY);
 		if (!settingsData) {
 			console.log("No budget settings found, skipping widget update");
@@ -59,7 +54,6 @@ async function updateWidget(transactions: Transaction[]): Promise<void> {
 		const formattedBudget = formatCurrency(budgetStatus.availableBudget);
 		const isNegative = budgetStatus.availableBudget < 0;
 
-		// Update the widget (using require to avoid JSX in .ts file)
 		requestWidgetUpdate({
 			widgetName: "BudgetWidget",
 			renderWidget: () => {
@@ -70,9 +64,7 @@ async function updateWidget(transactions: Transaction[]): Promise<void> {
 					isNegative,
 				});
 			},
-			widgetNotFound: () => {
-				// Widget not added to home screen yet
-			},
+			widgetNotFound: () => {},
 		});
 
 		console.log("Widget updated with budget:", formattedBudget);
@@ -115,19 +107,16 @@ const headlessNotificationListener = ({
 						data = notification;
 					}
 
-					// Only process Google Wallet notifications
 					if (data.app !== GOOGLE_WALLET_PACKAGE) {
 						return;
 					}
 
 					console.log("Google Wallet notification received:", data);
 
-					// Parse into transaction object (now in new format)
 					const transaction: Transaction | null =
 						parsePaymentNotification(data);
 
 					if (transaction) {
-						// Save to storage
 						const existingData = await AsyncStorage.getItem(STORAGE_KEY);
 						const existing = ensureArray<Transaction>(
 							safeJsonParse<Transaction[]>(existingData ?? "", [])
@@ -136,7 +125,6 @@ const headlessNotificationListener = ({
 						await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 						console.log("Transaction saved:", transaction);
 
-						// Update the widget with new budget
 						await updateWidget(updated);
 					}
 				} catch (error) {
@@ -149,7 +137,6 @@ const headlessNotificationListener = ({
 	});
 };
 
-// Register the headless task - this MUST be done early in the app lifecycle
 try {
 	AppRegistry.registerHeadlessTask(
 		RNAndroidNotificationListenerHeadlessJsName,
@@ -159,10 +146,8 @@ try {
 	console.error("Failed to register headless task:", error);
 }
 
-// Register the main app component
 registerRootComponent(App);
 
-// Register the widget task handler
 try {
 	registerWidgetTaskHandler(widgetTaskHandler);
 } catch (error) {
