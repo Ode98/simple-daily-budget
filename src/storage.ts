@@ -3,6 +3,8 @@ import {
 	Transaction,
 	TransactionUpdates,
 	BudgetSettings,
+	AppSettings,
+	DEFAULT_APP_SETTINGS,
 	TRANSACTION_TYPES,
 	TransactionType,
 } from "./types";
@@ -13,6 +15,7 @@ export { TRANSACTION_TYPES } from "./types";
 const STORAGE_KEYS = {
 	TRANSACTIONS: "@budget_transactions",
 	BUDGET_SETTINGS: "@budget_settings",
+	APP_SETTINGS: "@app_settings",
 } as const;
 
 export async function getBudgetSettings(): Promise<BudgetSettings | null> {
@@ -38,6 +41,31 @@ export async function saveBudgetSettings(
 		return true;
 	} catch (error) {
 		console.error("Error saving budget settings:", error);
+		return false;
+	}
+}
+
+export async function getAppSettings(): Promise<AppSettings> {
+	try {
+		const data = await AsyncStorage.getItem(STORAGE_KEYS.APP_SETTINGS);
+		if (!data) return DEFAULT_APP_SETTINGS;
+		const parsed = safeJsonParse<AppSettings | null>(data, null);
+		return parsed ?? DEFAULT_APP_SETTINGS;
+	} catch (error) {
+		console.error("Error reading app settings:", error);
+		return DEFAULT_APP_SETTINGS;
+	}
+}
+
+export async function saveAppSettings(settings: AppSettings): Promise<boolean> {
+	try {
+		await AsyncStorage.setItem(
+			STORAGE_KEYS.APP_SETTINGS,
+			JSON.stringify(settings)
+		);
+		return true;
+	} catch (error) {
+		console.error("Error saving app settings:", error);
 		return false;
 	}
 }

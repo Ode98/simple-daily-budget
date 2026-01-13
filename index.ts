@@ -1,5 +1,3 @@
-// Polyfills for headless task compatibility with Hermes in release builds
-// This MUST be the very first import before anything else
 import "./polyfills";
 
 import { registerRootComponent } from "expo";
@@ -10,8 +8,14 @@ import {
 	registerWidgetTaskHandler,
 	requestWidgetUpdate,
 } from "react-native-android-widget";
-import { parsePaymentNotification, GOOGLE_WALLET_PACKAGE } from "./src/parser";
-import { RawNotification, Transaction, BudgetSettings } from "./src/types";
+import { parsePaymentNotification, isGooglePayApp } from "./src/parser";
+import {
+	RawNotification,
+	Transaction,
+	BudgetSettings,
+	AppSettings,
+	DEFAULT_APP_SETTINGS,
+} from "./src/types";
 import { calculateBudgetStatus } from "./src/budget";
 import { widgetTaskHandler } from "./src/widgets/widget-task-handler";
 import { safeJsonParse, ensureArray, ensureObject } from "./src/utils/safeJson";
@@ -20,13 +24,16 @@ import App from "./App";
 
 const STORAGE_KEY = "@budget_transactions";
 const BUDGET_SETTINGS_KEY = "@budget_settings";
+const APP_SETTINGS_KEY = "@app_settings";
 
-const formatCurrency = (amount: number): string => {
-	return new Intl.NumberFormat("fi-FI", {
-		style: "currency",
-		currency: "EUR",
-	}).format(Math.abs(amount));
-};
+const getFormatCurrency =
+	(settings: AppSettings) =>
+	(amount: number): string => {
+		return new Intl.NumberFormat(settings.locale, {
+			style: "currency",
+			currency: settings.currency,
+		}).format(Math.abs(amount));
+	};
 
 interface HeadlessTaskData {
 	notification: string | RawNotification | null;
@@ -51,6 +58,13 @@ async function updateWidget(transactions: Transaction[]): Promise<void> {
 			transactions,
 			settings.monthlyBudget
 		);
+
+		const appSettingsData = await AsyncStorage.getItem(APP_SETTINGS_KEY);
+		const appSettings = appSettingsData
+			? safeJsonParse<AppSettings>(appSettingsData, DEFAULT_APP_SETTINGS)
+			: DEFAULT_APP_SETTINGS;
+
+		const formatCurrency = getFormatCurrency(appSettings);
 		const formattedBudget = formatCurrency(budgetStatus.availableBudget);
 		const isNegative = budgetStatus.availableBudget < 0;
 
@@ -107,11 +121,11 @@ const headlessNotificationListener = ({
 						data = notification;
 					}
 
-					if (data.app !== GOOGLE_WALLET_PACKAGE) {
+					if (!isGooglePayApp(data.app)) {
 						return;
 					}
 
-					console.log("Google Wallet notification received:", data);
+					console.log("Google Pay notification received:", data);
 
 					const transaction: Transaction | null =
 						parsePaymentNotification(data);

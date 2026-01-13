@@ -1,9 +1,10 @@
-/**
- * Formats a number as Finnish EUR currency
- */
-export const formatCurrency = (amount: number): string => {
-	return new Intl.NumberFormat("fi-FI", {
+export const formatCurrency = (
+	amount: number,
+	currency: string = "EUR",
+	locale: string = "fi-FI"
+): string => {
+	return new Intl.NumberFormat(locale, {
 		style: "currency",
-		currency: "EUR",
+		currency,
 	}).format(Math.abs(amount));
 };

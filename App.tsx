@@ -10,11 +10,13 @@ import {
 	BudgetModal,
 	TransactionList,
 	ErrorBoundary,
+	SettingsModal,
 } from "./src/components";
 
 import { usePermission } from "./src/hooks/usePermission";
 import { useBudget } from "./src/hooks/useBudget";
 import { useTransactions } from "./src/hooks/useTransactions";
+import { useSettings } from "./src/hooks/useSettings";
 
 export default function App(): React.JSX.Element {
 	const { permissionStatus, checkPermission, requestPermission } =
@@ -58,16 +60,19 @@ export default function App(): React.JSX.Element {
 		showBudgetModal,
 		setShowBudgetModal,
 		handleSaveBudget,
-		handleResetBudget,
+		openBudgetModal,
 		loadBudgetSettings,
 	} = useBudget(transactions);
 
+	const { settings, loadSettings, updateCurrency } = useSettings();
 	const [refreshing, setRefreshing] = useState<boolean>(false);
+	const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
 	const loadData = useCallback(async () => {
 		await loadTransactions();
 		await loadBudgetSettings();
-	}, [loadTransactions, loadBudgetSettings]);
+		await loadSettings();
+	}, [loadTransactions, loadBudgetSettings, loadSettings]);
 
 	const onRefresh = useCallback(async () => {
 		setRefreshing(true);
@@ -100,7 +105,8 @@ export default function App(): React.JSX.Element {
 
 				<BudgetHeader
 					budgetStatus={budgetStatus}
-					onSettingsPress={handleResetBudget}
+					settings={settings}
+					onSettingsPress={() => setShowSettingsModal(true)}
 				/>
 
 				<ActionButtons
@@ -126,6 +132,14 @@ export default function App(): React.JSX.Element {
 					onBudgetInputChange={setBudgetInput}
 					onSave={handleSaveBudget}
 					onClose={() => setShowBudgetModal(false)}
+				/>
+
+				<SettingsModal
+					visible={showSettingsModal}
+					settings={settings}
+					onClose={() => setShowSettingsModal(false)}
+					onCurrencyChange={updateCurrency}
+					onChangeBudget={openBudgetModal}
 				/>
 
 				<FormModal

@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
-import { Alert } from "react-native";
 import { requestWidgetUpdate } from "react-native-android-widget";
 import { BudgetSettings, BudgetStatus, Transaction } from "../types";
 import { getBudgetSettings, saveBudgetSettings } from "../storage";
 import { calculateBudgetStatus } from "../budget";
 import { formatCurrency } from "../utils/formatCurrency";
+import { useSettings } from "./useSettings";
 
 interface UseBudgetResult {
 	budgetSettings: BudgetSettings | null;
@@ -14,7 +14,7 @@ interface UseBudgetResult {
 	showBudgetModal: boolean;
 	setShowBudgetModal: (value: boolean) => void;
 	handleSaveBudget: () => Promise<void>;
-	handleResetBudget: () => void;
+	openBudgetModal: () => void;
 	loadBudgetSettings: () => Promise<BudgetSettings | null>;
 }
 
@@ -22,6 +22,7 @@ export const useBudget = (transactions: Transaction[]): UseBudgetResult => {
 	const [budgetSettings, setBudgetSettings] = useState<BudgetSettings | null>(
 		null
 	);
+	const { settings: appSettings } = useSettings();
 	const [budgetInput, setBudgetInput] = useState<string>("");
 	const [showBudgetModal, setShowBudgetModal] = useState<boolean>(false);
 
@@ -43,7 +44,6 @@ export const useBudget = (transactions: Transaction[]): UseBudgetResult => {
 	const handleSaveBudget = async (): Promise<void> => {
 		const amount = parseFloat(budgetInput.replace(",", "."));
 		if (isNaN(amount) || amount <= 0) {
-			Alert.alert("Invalid Amount", "Please enter a valid budget amount");
 			return;
 		}
 
@@ -58,17 +58,9 @@ export const useBudget = (transactions: Transaction[]): UseBudgetResult => {
 		setBudgetInput("");
 	};
 
-	const handleResetBudget = (): void => {
-		Alert.alert("Reset Budget", "Do you want to change your monthly budget?", [
-			{ text: "Cancel", style: "cancel" },
-			{
-				text: "Reset",
-				onPress: () => {
-					setBudgetInput(budgetSettings?.monthlyBudget?.toString() || "");
-					setShowBudgetModal(true);
-				},
-			},
-		]);
+	const openBudgetModal = (): void => {
+		setBudgetInput(budgetSettings?.monthlyBudget?.toString() || "");
+		setShowBudgetModal(true);
 	};
 
 	const budgetStatus: BudgetStatus | null = budgetSettings
@@ -78,7 +70,11 @@ export const useBudget = (transactions: Transaction[]): UseBudgetResult => {
 	useEffect(() => {
 		if (budgetStatus) {
 			try {
-				const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+				const formattedBudget = formatCurrency(
+					budgetStatus.availableBudget,
+					appSettings.currency,
+					appSettings.locale
+				);
 				const isNegative = budgetStatus.availableBudget < 0;
 				requestWidgetUpdate({
 					widgetName: "BudgetWidget",
@@ -106,7 +102,7 @@ export const useBudget = (transactions: Transaction[]): UseBudgetResult => {
 		showBudgetModal,
 		setShowBudgetModal,
 		handleSaveBudget,
-		handleResetBudget,
+		openBudgetModal,
 		loadBudgetSettings,
 	};
 };

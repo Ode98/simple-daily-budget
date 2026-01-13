@@ -4,6 +4,7 @@ export { default as BudgetHeader } from "./BudgetHeader";
 export { default as ActionButtons } from "./ActionButtons";
 export { default as PermissionScreen } from "./PermissionScreen";
 export { default as EmptyState } from "./EmptyState";
+export { default as SettingsModal } from "./SettingsModal";
 export { BudgetModal } from "./BudgetModal";
 export { TransactionList } from "./TransactionList";
 export { ErrorBoundary } from "./ErrorBoundary";

@@ -14,8 +14,6 @@ export function BudgetWidget({
 	budget,
 	isNegative = false,
 }: BudgetWidgetProps) {
-	// Add minus sign for negative values and choose color
-	// Note: formatCurrency usually adds the minus sign, but we ensure it here if needed
 	const displayBudget = isNegative ? `-${budget}` : budget;
 	const budgetColor = isNegative ? "#ef4444" : "#4ade80";
 

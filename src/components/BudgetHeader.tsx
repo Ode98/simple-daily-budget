@@ -1,27 +1,25 @@
 import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
-import { BudgetStatus } from "../types";
-
-// Format currency
-const formatCurrency = (amount: number): string => {
-	return new Intl.NumberFormat("fi-FI", {
-		style: "currency",
-		currency: "EUR",
-	}).format(Math.abs(amount));
-};
+import { BudgetStatus, AppSettings } from "../types";
+import { formatCurrency } from "../utils/formatCurrency";
 
 interface BudgetHeaderProps {
 	budgetStatus: BudgetStatus | null;
+	settings: AppSettings;
 	onSettingsPress: () => void;
 }
 
 const BudgetHeader: React.FC<BudgetHeaderProps> = ({
 	budgetStatus,
+	settings,
 	onSettingsPress,
 }) => {
 	const isPositive = budgetStatus?.availableBudget
 		? budgetStatus.availableBudget >= 0
 		: true;
+
+	const format = (amount: number) =>
+		formatCurrency(amount, settings.currency, settings.locale);
 
 	return (
 		<View style={styles.header}>
@@ -40,11 +38,11 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
 							{ color: isPositive ? "#4CAF50" : "#e94560" },
 						]}
 					>
-						<Text style={{ fontSize: 50 }}>{isPositive ? "+" : "-"}</Text>
-						{formatCurrency(budgetStatus.availableBudget)}
+						<Text style={{ fontSize: 50 }}>{isPositive ? "" : "-"}</Text>
+						{format(budgetStatus.availableBudget)}
 					</Text>
 					<Text style={styles.dailyAllowance}>
-						+{formatCurrency(budgetStatus.dailyAllowance)}/day
+						+{format(budgetStatus.dailyAllowance)}/day
 					</Text>
 					<View style={styles.statsRow}>
 						<Text style={styles.statText}>
@@ -52,13 +50,13 @@ const BudgetHeader: React.FC<BudgetHeaderProps> = ({
 						</Text>
 						<Text style={styles.statDivider}>•</Text>
 						<Text style={styles.statText}>
-							Spent: {formatCurrency(budgetStatus.totalSpent)}
+							Spent: {format(budgetStatus.totalSpent)}
 						</Text>
 						{budgetStatus.totalIncome > 0 && (
 							<>
 								<Text style={styles.statDivider}>•</Text>
 								<Text style={[styles.statText, { color: "#4CAF50" }]}>
-									+{formatCurrency(budgetStatus.totalIncome)}
+									+{format(budgetStatus.totalIncome)}
 								</Text>
 							</>
 						)}
