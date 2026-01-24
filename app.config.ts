@@ -32,6 +32,7 @@ export default {
 		},
 		plugins: [
 			"./plugins/withAndroidNotificationListener",
+			"./plugins/withWidgetMidnightUpdate",
 			"expo-asset",
 			[
 				"react-native-android-widget",
