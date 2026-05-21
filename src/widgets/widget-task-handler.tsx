@@ -23,63 +23,69 @@ const formatCurrency = (amount: number): string => {
  * It fetches the latest data from AsyncStorage to ensure the widget
  * stays up to date with background updates.
  */
-export async function widgetTaskHandler(
+export function widgetTaskHandler(
 	props: WidgetTaskHandlerProps
 ): Promise<void> {
-	switch (props.widgetAction) {
-		case "WIDGET_ADDED":
-		case "WIDGET_UPDATE":
-		case "WIDGET_RESIZED":
-			try {
-				const [settingsData, transactionsData] = await Promise.all([
-					AsyncStorage.getItem(BUDGET_SETTINGS_KEY),
-					AsyncStorage.getItem(STORAGE_KEY),
-				]);
+	return new Promise((resolve) => {
+		setTimeout(() => {
+			(async () => {
+				switch (props.widgetAction) {
+					case "WIDGET_ADDED":
+					case "WIDGET_UPDATE":
+					case "WIDGET_RESIZED":
+						try {
+							const [settingsData, transactionsData] = await Promise.all([
+								AsyncStorage.getItem(BUDGET_SETTINGS_KEY),
+								AsyncStorage.getItem(STORAGE_KEY),
+							]);
 
-				if (!settingsData) {
-					props.renderWidget(
-						<BudgetWidget budget="Setup app" isNegative={false} />
-					);
-					break;
+							if (!settingsData) {
+								props.renderWidget(
+									<BudgetWidget budget="Setup app" isNegative={false} />
+								);
+								break;
+							}
+
+							const settings = ensureObject<BudgetSettings>(
+								safeJsonParse<BudgetSettings | null>(settingsData, null)
+							);
+							if (!settings) {
+								props.renderWidget(
+									<BudgetWidget budget="Data error" isNegative={false} />
+								);
+								break;
+							}
+
+							const transactions = ensureArray<Transaction>(
+								safeJsonParse<Transaction[]>(transactionsData ?? "", [])
+							);
+
+							const budgetStatus = calculateBudgetStatus(
+								transactions,
+								settings.monthlyBudget
+							);
+							const formattedBudget = formatCurrency(budgetStatus.availableBudget);
+							const isNegative = budgetStatus.availableBudget < 0;
+
+							props.renderWidget(
+								<BudgetWidget budget={formattedBudget} isNegative={isNegative} />
+							);
+						} catch (error) {
+							console.error("Error updating widget:", error);
+							props.renderWidget(<BudgetWidget budget="Error" isNegative={false} />);
+						}
+						break;
+
+					case "WIDGET_DELETED":
+						break;
+
+					case "WIDGET_CLICK":
+						break;
+
+					default:
+						break;
 				}
-
-				const settings = ensureObject<BudgetSettings>(
-					safeJsonParse<BudgetSettings | null>(settingsData, null)
-				);
-				if (!settings) {
-					props.renderWidget(
-						<BudgetWidget budget="Data error" isNegative={false} />
-					);
-					break;
-				}
-
-				const transactions = ensureArray<Transaction>(
-					safeJsonParse<Transaction[]>(transactionsData ?? "", [])
-				);
-
-				const budgetStatus = calculateBudgetStatus(
-					transactions,
-					settings.monthlyBudget
-				);
-				const formattedBudget = formatCurrency(budgetStatus.availableBudget);
-				const isNegative = budgetStatus.availableBudget < 0;
-
-				props.renderWidget(
-					<BudgetWidget budget={formattedBudget} isNegative={isNegative} />
-				);
-			} catch (error) {
-				console.error("Error updating widget:", error);
-				props.renderWidget(<BudgetWidget budget="Error" />);
-			}
-			break;
-
-		case "WIDGET_DELETED":
-			break;
-
-		case "WIDGET_CLICK":
-			break;
-
-		default:
-			break;
-	}
+			})().finally(() => resolve());
+		}, 0);
+	});
 }
