@@ -2,7 +2,8 @@ const { withAndroidManifest, withDangerousMod } = require("expo/config-plugins")
 const fs = require("fs");
 const path = require("path");
 
-const RECEIVER_JAVA = `package com.dailybudget.app.widget;
+function getReceiverJava(androidPackage, widgetPackage) {
+	return `package ${widgetPackage};
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -15,13 +16,13 @@ import android.os.Build;
 import java.util.Calendar;
 
 public class WidgetMidnightUpdateReceiver extends BroadcastReceiver {
-    private static final String ACTION_MIDNIGHT_UPDATE = "com.dailybudget.app.MIDNIGHT_UPDATE";
+    private static final String ACTION_MIDNIGHT_UPDATE = "${androidPackage}.MIDNIGHT_UPDATE";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent != null && (ACTION_MIDNIGHT_UPDATE.equals(intent.getAction()) || Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()))) {
             scheduleNextUpdate(context);
-            
+
             // Trigger a widget update
             Intent updateIntent = new Intent(context, BudgetWidget.class);
             updateIntent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
@@ -35,14 +36,14 @@ public class WidgetMidnightUpdateReceiver extends BroadcastReceiver {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, WidgetMidnightUpdateReceiver.class);
         intent.setAction(ACTION_MIDNIGHT_UPDATE);
-        
+
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             flags |= PendingIntent.FLAG_IMMUTABLE;
         }
-        
+
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, flags);
-        
+
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(System.currentTimeMillis());
         calendar.add(Calendar.DAY_OF_YEAR, 1);
@@ -50,7 +51,7 @@ public class WidgetMidnightUpdateReceiver extends BroadcastReceiver {
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
         calendar.set(Calendar.MILLISECOND, 0);
-        
+
         if (alarmManager != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
@@ -61,16 +62,38 @@ public class WidgetMidnightUpdateReceiver extends BroadcastReceiver {
     }
 }
 `;
+}
+
+function getWidgetJavaDir(projectRoot, androidPackage) {
+	return path.join(
+		projectRoot,
+		"android",
+		"app",
+		"src",
+		"main",
+		"java",
+		...androidPackage.split("."),
+		"widget"
+	);
+}
 
 /**
  * Expo config plugin to add Widget Midnight Update receiver
  * for scheduling widget updates at midnight.
  */
 function withWidgetMidnightUpdate(config) {
+	const androidPackage = config.android?.package;
+	if (!androidPackage) {
+		throw new Error(
+			"withWidgetMidnightUpdate requires android.package in app config"
+		);
+	}
+	const widgetPackage = `${androidPackage}.widget`;
+	const midnightAction = `${androidPackage}.MIDNIGHT_UPDATE`;
+
 	config = withAndroidManifest(config, async (config) => {
 		const manifest = config.modResults.manifest;
 
-		// Add permissions
 		if (!manifest["uses-permission"]) {
 			manifest["uses-permission"] = [];
 		}
@@ -92,19 +115,16 @@ function withWidgetMidnightUpdate(config) {
 			}
 		}
 
-		// Ensure we have the application node
 		if (!manifest.application) {
 			manifest.application = [{}];
 		}
 
 		const application = manifest.application[0];
 
-		// Add the receiver for midnight updates
 		if (!application.receiver) {
 			application.receiver = [];
 		}
 
-		// Check if receiver already exists
 		const receiverExists = application.receiver.some(
 			(receiver) =>
 				receiver.$?.["android:name"] === ".widget.WidgetMidnightUpdateReceiver"
@@ -121,7 +141,7 @@ function withWidgetMidnightUpdate(config) {
 						action: [
 							{
 								$: {
-									"android:name": "com.dailybudget.app.MIDNIGHT_UPDATE",
+									"android:name": midnightAction,
 								},
 							},
 							{
@@ -142,58 +162,42 @@ function withWidgetMidnightUpdate(config) {
 		"android",
 		async (config) => {
 			const projectRoot = config.modRequest.projectRoot;
-			const widgetDirPath = path.join(
-				projectRoot,
-				"android",
-				"app",
-				"src",
-				"main",
-				"java",
-				"com",
-				"dailybudget",
-				"app",
-				"widget"
-			);
+			const widgetDirPath = getWidgetJavaDir(projectRoot, androidPackage);
 
 			if (!fs.existsSync(widgetDirPath)) {
 				fs.mkdirSync(widgetDirPath, { recursive: true });
 			}
 
-			// Write WidgetMidnightUpdateReceiver.java
-			const receiverPath = path.join(widgetDirPath, "WidgetMidnightUpdateReceiver.java");
-			fs.writeFileSync(receiverPath, RECEIVER_JAVA);
+			const receiverPath = path.join(
+				widgetDirPath,
+				"WidgetMidnightUpdateReceiver.java"
+			);
+			fs.writeFileSync(
+				receiverPath,
+				getReceiverJava(androidPackage, widgetPackage)
+			);
 
-			// Modify BudgetWidget.java to call scheduleNextUpdate in onUpdate
+			// Written after react-native-android-widget (dangerous mods run in reverse
+			// registration order, so this plugin must be registered before it).
 			const budgetWidgetPath = path.join(widgetDirPath, "BudgetWidget.java");
-			if (fs.existsSync(budgetWidgetPath)) {
-				let content = fs.readFileSync(budgetWidgetPath, "utf-8");
-				
-				// Ensure we have imports (Context, AppWidgetManager)
-				if (!content.includes("import android.content.Context;")) {
-					content = content.replace(
-						"import com.reactnativeandroidwidget.RNWidgetProvider;",
-						"import com.reactnativeandroidwidget.RNWidgetProvider;\nimport android.content.Context;\nimport android.appwidget.AppWidgetManager;"
-					);
-				}
+			fs.writeFileSync(
+				budgetWidgetPath,
+				`package ${widgetPackage};
 
-				// Check if onUpdate is already overridden
-				if (!content.includes("public void onUpdate(")) {
-					const onUpdateMethod = `
+import com.reactnativeandroidwidget.RNWidgetProvider;
+import android.content.Context;
+import android.appwidget.AppWidgetManager;
+
+public class BudgetWidget extends RNWidgetProvider {
+
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         super.onUpdate(context, appWidgetManager, appWidgetIds);
         WidgetMidnightUpdateReceiver.scheduleNextUpdate(context);
     }
-`;
-					// Insert the method before the last brace
-					const lastBraceIndex = content.lastIndexOf("}");
-					if (lastBraceIndex !== -1) {
-						content = content.substring(0, lastBraceIndex) + onUpdateMethod + "}\n";
-					}
-				}
-				
-				fs.writeFileSync(budgetWidgetPath, content);
-			}
+}
+`
+			);
 
 			return config;
 		},
