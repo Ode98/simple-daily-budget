@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
 	Modal,
 	View,
@@ -6,24 +6,38 @@ import {
 	TouchableOpacity,
 	StyleSheet,
 	ScrollView,
+	TextInput,
 } from "react-native";
-import { SUPPORTED_CURRENCIES, AppSettings } from "../types";
+import { SUPPORTED_CURRENCIES, AppSettings, BudgetSettings } from "../types";
 
 interface SettingsModalProps {
 	visible: boolean;
 	settings: AppSettings;
+	budgetSettings: BudgetSettings | null;
 	onClose: () => void;
 	onCurrencyChange: (currencyCode: string) => void;
 	onChangeBudget: () => void;
+	onSimulateNotification?: (rawJson: string) => Promise<void>;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
 	visible,
 	settings,
+	budgetSettings,
 	onClose,
 	onCurrencyChange,
 	onChangeBudget,
+	onSimulateNotification,
 }) => {
+	const [developerJson, setDeveloperJson] = useState("");
+
+	const formatCurrency = (amount: number) => {
+		return new Intl.NumberFormat(settings.locale, {
+			style: "currency",
+			currency: settings.currency,
+		}).format(amount);
+	};
+
 	return (
 		<Modal
 			visible={visible}
@@ -51,7 +65,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 								}}
 							>
 								<Text style={styles.budgetButtonText}>
-									Change Monthly Budget
+									Change Monthly Budget{" "}
+									{budgetSettings?.monthlyBudget
+										? `(${formatCurrency(budgetSettings.monthlyBudget)})`
+										: ""}
 								</Text>
 							</TouchableOpacity>
 						</View>
@@ -90,6 +107,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 								))}
 							</View>
 						</View>
+
+						{onSimulateNotification && (
+							<View style={styles.section}>
+								<Text style={styles.sectionTitle}>Developer Settings</Text>
+								<TextInput
+									style={styles.devInput}
+									placeholder="Paste raw notification JSON here..."
+									placeholderTextColor="#666"
+									multiline
+									value={developerJson}
+									onChangeText={setDeveloperJson}
+								/>
+								<TouchableOpacity
+									style={styles.devButton}
+									onPress={() => {
+										onSimulateNotification(developerJson);
+										setDeveloperJson("");
+									}}
+								>
+									<Text style={styles.devButtonText}>Simulate Notification</Text>
+								</TouchableOpacity>
+							</View>
+						)}
 					</ScrollView>
 				</View>
 			</View>
@@ -179,6 +219,26 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 	},
 	budgetButtonText: {
+		fontSize: 16,
+		color: "#ffffff",
+		fontWeight: "500",
+	},
+	devInput: {
+		backgroundColor: "rgba(255, 255, 255, 0.05)",
+		borderRadius: 12,
+		padding: 12,
+		color: "#ffffff",
+		minHeight: 100,
+		textAlignVertical: "top",
+		marginBottom: 12,
+	},
+	devButton: {
+		backgroundColor: "#4CAF50",
+		borderRadius: 12,
+		padding: 16,
+		alignItems: "center",
+	},
+	devButtonText: {
 		fontSize: 16,
 		color: "#ffffff",
 		fontWeight: "500",

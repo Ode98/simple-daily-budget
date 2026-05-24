@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 
 import { Transaction, TRANSACTION_TYPES } from "../types";
+import { parsePaymentNotification } from "../parser";
 import {
 	getTransactions,
 	saveTransaction,
@@ -45,6 +46,7 @@ interface UseTransactionsResult {
 	handleTransactionPress: (transaction: Transaction) => void;
 	handleSaveEdit: () => Promise<void>;
 	handleDeleteTransaction: () => Promise<void>;
+	handleSimulateNotification: (rawJson: string) => Promise<void>;
 }
 
 export const useTransactions = (): UseTransactionsResult => {
@@ -171,6 +173,22 @@ export const useTransactions = (): UseTransactionsResult => {
 		);
 	};
 
+	const handleSimulateNotification = async (rawJson: string): Promise<void> => {
+		try {
+			const data = JSON.parse(rawJson);
+			const transaction = parsePaymentNotification(data);
+			if (transaction) {
+				const updated = await saveTransaction(transaction);
+				setTransactions(updated);
+				Alert.alert("Success", "Notification simulated successfully");
+			} else {
+				Alert.alert("Error", "Could not parse payment notification. Make sure it's a valid Google Pay notification format.");
+			}
+		} catch (error) {
+			Alert.alert("Error", "Invalid JSON data format");
+		}
+	};
+
 	return {
 		transactions,
 		sections,
@@ -199,5 +217,6 @@ export const useTransactions = (): UseTransactionsResult => {
 		handleTransactionPress,
 		handleSaveEdit,
 		handleDeleteTransaction,
+		handleSimulateNotification,
 	};
 };

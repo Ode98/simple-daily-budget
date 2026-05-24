@@ -50,6 +50,7 @@ export default function App(): React.JSX.Element {
 		handleTransactionPress,
 		handleSaveEdit,
 		handleDeleteTransaction,
+		handleSimulateNotification,
 	} = useTransactions();
 
 	const {
@@ -137,9 +138,11 @@ export default function App(): React.JSX.Element {
 				<SettingsModal
 					visible={showSettingsModal}
 					settings={settings}
+					budgetSettings={budgetSettings}
 					onClose={() => setShowSettingsModal(false)}
 					onCurrencyChange={updateCurrency}
 					onChangeBudget={openBudgetModal}
+					onSimulateNotification={handleSimulateNotification}
 				/>
 
 				<FormModal

@@ -135,6 +135,42 @@ const headlessNotificationListener = ({
 						const existing = ensureArray<Transaction>(
 							safeJsonParse<Transaction[]>(existingData ?? "", [])
 						);
+
+						// Prevent duplicate notifications
+						const isDuplicate = existing.some((t) => {
+							if (t.source !== "auto") return false;
+
+							const tText = t.rawNotification?.text || t.rawNotification?.bigText || "";
+							const txText = transaction.rawNotification?.text || transaction.rawNotification?.bigText || "";
+							const isSameText = tText !== "" && tText === txText;
+
+							const timeDiff = Math.abs(
+								new Date(t.timestamp).getTime() - new Date(transaction.timestamp).getTime()
+							);
+
+							// Duplicate notifications usually happen within milliseconds or a few seconds of each other.
+							// A 1-minute window is safe and won't block legitimate back-to-back purchases.
+							if (isSameText && timeDiff < 60 * 1000) {
+								return true;
+							}
+
+							// Exact same parsed transaction within 1 minute is likely a duplicate broadcast
+							if (
+								t.amount === transaction.amount &&
+								t.description === transaction.description &&
+								timeDiff < 60 * 1000
+							) {
+								return true;
+							}
+
+							return false;
+						});
+
+						if (isDuplicate) {
+							console.log("Duplicate Google Pay notification ignored.");
+							return;
+						}
+
 						const updated = [transaction, ...existing];
 						await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 						console.log("Transaction saved:", transaction);
